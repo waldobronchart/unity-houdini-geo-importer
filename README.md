@@ -19,3 +19,9 @@ Runtime Scripts
 ```
 HoudiniGeo.cs                     custom unity asset to represent .geo parsed file contents
 ```
+
+## Example
+
+Example of a complex mesh imported with this plugin
+
+![Imgur](http://i.imgur.com/kQBBy6f.png)
