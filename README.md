@@ -1,8 +1,8 @@
 # Unity Houdini Geo File Importer
 
-This unity plugin imports text based Houdini .geo file format and creates unity meshes based on its attributes.
+This unity plugin imports the text based SideFX Houdini `.geo` file format and creates unity meshes based on its attributes.
 
-Dependencies: `JsonDotNet`
+Dependencies: `Newtonsoft.Json`
 
 ## Overview
 
@@ -19,6 +19,16 @@ Runtime Scripts
 ```
 HoudiniGeo.cs                     custom unity asset to represent .geo parsed file contents
 ```
+
+## Limitations
+
+- Only polygonal meshes are supported for now
+- Triangulation: Naive triangulation is done on import for primitives with more than 3 vertices. Most likely this will not produce the desired result, so it is recommended to do triangulation in Houdini before exporting to the .geo file.
+
+## Common issues
+
+**My mesh is flipped**
+Click on the generated .asset file, then check "Reverse Winding" in the inspector under "Import Settings"
 
 ## Example
 
