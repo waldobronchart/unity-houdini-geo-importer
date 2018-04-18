@@ -306,9 +306,6 @@ namespace Houdini.GeoImporter
         
         private static void ParsePrimitives(HoudiniGeo geo, JToken primitivesValueToken)
         {
-            // Polygon Mesh
-            // Only type: "run", runtiype: "Poly" supported for now.
-            //
             // "primitives",[
             // 		[
             // 			[Header],
@@ -329,11 +326,12 @@ namespace Houdini.GeoImporter
 
             foreach (var primitiveToken in primitivesValueToken.Children())
             {
+                // Houdini 13
                 // Primitive [[Header], [Body]]
                 //[
                 //	[
                 //		"type","run",
-                //		"runtype","Poly",
+                //		"runtype","Poly",           <- Options: Poly, Sphere, BezierCurve, NURBCurve
                 //		"varyingfields",["vertex"],
                 //		"uniformfields",{
                 //		"closed":true
@@ -347,6 +345,19 @@ namespace Houdini.GeoImporter
                 //		...
                 //	]
                 //]
+
+                // Houdini 16
+                // Primitive [[Header], [Body]]:
+                // [
+                // 	[
+                // 		"type","Polygon_run"        <- Options: Polygon_run, PolygonCurve_run
+                // 	],
+                // 	[
+                // 		"startvertex",0,
+                // 		"nprimitives",12,
+                // 		"nvertices_rle",[4,12]
+                // 	]
+                // ]
                 
                 JToken[] childBlockTokens = primitiveToken.Children().ToArray();
                 JToken headerToken = childBlockTokens[0];
@@ -356,20 +367,29 @@ namespace Houdini.GeoImporter
                 Dictionary<string, JToken> headerDict = ArrayKeyValueToDictionary(headerToken.Children().ToArray());
                 string type = headerDict["type"].Value<string>();
 
-                // Parse RunType primitives
-                if (type == "run")
+                switch (type)
                 {
-                    string runType = headerDict["runtype"].Value<string>();
-                    switch (runType)
+                    case "Polygon_run":
+                    case "PolygonCurve_run":
                     {
-                    case "Poly":
-                        polyPrimitives.AddRange(ParsePolyPrimitiveGroup(headerDict, bodyToken, primIdCounter));
+                        polyPrimitives.AddRange(ParsePrimitivePolygonRun(bodyToken, ref primIdCounter));
                         break;
-                    case "BezierCurve":
-                        //bezierCurvePrimitives.AddRange(primitives);
-                        break;
-                    case "NURBCurve":
-                        //nurbCurvePrimitives.AddRange(primitives);
+                    }
+
+                    case "run":
+                    {
+                        string runType = headerDict["runtype"].Value<string>();
+                        switch (runType)
+                        {
+                            case "Poly":
+                                polyPrimitives.AddRange(ParsePolyPrimitiveGroup(headerDict, bodyToken, ref primIdCounter));
+                                break;
+
+                            case "Sphere":
+                            case "BezierCurve":
+                            case "NURBCurve":
+                                break;
+                        }
                         break;
                     }
                 }
@@ -380,17 +400,102 @@ namespace Houdini.GeoImporter
             geo.nurbCurvePrimitives = nurbCurvePrimitives.ToArray();
         }
 
-        private static PolyPrimitive[] ParsePolyPrimitiveGroup(Dictionary<string, JToken> headerDict, JToken bodyToken, int primIdCounter)
+        private static PolyPrimitive[] ParsePrimitivePolygonRun(JToken bodyToken, ref int primIdCounter)
         {
-            return bodyToken.Children().Select(primToken => {
+            // RLE Compressed
+            // bodyToken:
+            // [
+            // 	   "startvertex",0,
+            // 	   "nprimitives",12,
+            // 	   "nvertices_rle",[4,12,3,6]   <- this means: 12 prims with 4 verts each, then 6 prims with 3 verts each
+            //                                    which translates to [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], ...]
+            // 	]
+
+            // Primitive Vert Count
+            // bodyToken:
+            // [
+            //     "startvertex",0,
+            //     "nprimitives",9,
+            //     "nvertices",[4,8,26,18,24,20,26,22,26]      <- [prim with 4 verts, prim with 8 verts, ...]
+            //                                                    which translates to [[0, 1, 2, 3], [4, 5, 6, 7, 8, 9, 10, 11], ...]
+            // ]
+
+            Dictionary<string, JToken> bodyDict = ArrayKeyValueToDictionary(bodyToken.Children().ToArray());
+
+            int numPrimitives = bodyDict["nprimitives"].Value<int>();
+            int vertexIdCounter = bodyDict["startvertex"].Value<int>();
+            PolyPrimitive[] polyPrimitives = new PolyPrimitive[numPrimitives];
+
+            if (bodyDict.ContainsKey("nvertices_rle"))
+            {
+                JEnumerable<JToken> numVerticesRLE = bodyDict["nvertices_rle"].Children();
+
+                // Build array of primitives from RLE-compressed primitive description
+                int primIndex = 0;
+                var enumNumVerticesRLE = numVerticesRLE.GetEnumerator();
+                while (enumNumVerticesRLE.MoveNext())
+                {
+                    int numVerticesInPrimitive = enumNumVerticesRLE.Current.Value<int>();
+                    enumNumVerticesRLE.MoveNext();
+                    int numRepeatPrimitive = enumNumVerticesRLE.Current.Value<int>();
+
+                    for (int i = 0; i < numRepeatPrimitive; i++)
+                    {
+                        PolyPrimitive prim = new PolyPrimitive();
+                        prim.id = primIdCounter++;
+                        prim.indices = new int[numVerticesInPrimitive];
+                        for (int v = 0; v < numVerticesInPrimitive; v++)
+                            prim.indices[v] = vertexIdCounter++;
+                        prim.triangles = TriangulateNGon(prim.indices);
+                        polyPrimitives[primIndex++] = prim;
+                    }
+                }
+            }
+            else if (bodyDict.ContainsKey("nvertices"))
+            {
+                int primIndex = 0;
+                JEnumerable<JToken> numVertices = bodyDict["nvertices"].Children();
+                foreach (JToken vertCountToken in numVertices)
+                {
+                    int numVerticesInPrimitive = vertCountToken.Value<int>();
+
+                    PolyPrimitive prim = new PolyPrimitive();
+                    prim.id = primIdCounter++;
+                    prim.indices = new int[numVerticesInPrimitive];
+                    for (int v = 0; v < numVerticesInPrimitive; v++)
+                        prim.indices[v] = vertexIdCounter++;
+                    prim.triangles = TriangulateNGon(prim.indices);
+                    polyPrimitives[primIndex++] = prim;
+                }
+            }
+
+            return polyPrimitives;
+        }
+
+        private static PolyPrimitive[] ParsePolyPrimitiveGroup(Dictionary<string, JToken> headerDict, JToken bodyToken, ref int primIdCounter)
+        {
+            // bodyToken:
+            // [
+            //     [[0,1,2,3]],
+            //     [[4,5,6,7]],
+            //     [[8,9,10,11]],
+            //     [[12,13,14,15]],
+            //     ...
+            //	]
+
+            int primIdCounterInternal = primIdCounter;
+            PolyPrimitive[] prims = bodyToken.Children().Select(primToken => {
                 var primChildTokens = primToken.Children().ToArray();
 
                 var prim = new PolyPrimitive();
-                prim.id = primIdCounter++;
+                prim.id = primIdCounterInternal++;
                 prim.indices = primChildTokens[0].Values<int>().ToArray();
                 prim.triangles = TriangulateNGon(prim.indices);
                 return prim;
             }).ToArray();
+
+            primIdCounter = primIdCounterInternal;
+            return prims;
         }
 
         private static int[] TriangulateNGon(int[] indices)
