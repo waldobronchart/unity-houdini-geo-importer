@@ -18,3 +18,7 @@ sysinfo.txt
 
 # Code editors
 .vscode
+
+# Houdini
+**/backup/**
+backup.meta

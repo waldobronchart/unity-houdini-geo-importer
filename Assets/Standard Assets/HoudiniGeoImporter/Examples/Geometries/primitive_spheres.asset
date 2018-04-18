@@ -14,15 +14,15 @@ MonoBehaviour:
   sourceAsset: {fileID: 102900000, guid: c5588aa897b394ed48e3fadc9c309735, type: 3}
   importSettings:
     reverseWinding: 0
-  fileVersion: 13.0.665
+  fileVersion: 16.5.378
   pointCount: 2
   vertexCount: 2
   primCount: 2
   fileInfo:
-    software: Houdini 13.0.665
-    hostname: waldos-mbp.home
+    software: Houdini 16.5.378
+    hostname: waldos-macbook-pro.local
     artist: waldo
-    timeToCook: 0.000016
+    timeToCook: 0.000248
     bounds:
       m_Center: {x: -1, y: 3.6, z: -1}
       m_Extent: {x: 0.5, y: -0.5, z: 0.5}
@@ -35,16 +35,14 @@ MonoBehaviour:
   - name: P
     type: 1
     owner: 2
-    tupleSize: 4
+    tupleSize: 3
     floatValues:
     - 0
     - 0
     - 0
-    - 1
     - 2.6
     - 0
     - 0
-    - 1
     intValues: 
     stringValues: []
   polyPrimitives: []
