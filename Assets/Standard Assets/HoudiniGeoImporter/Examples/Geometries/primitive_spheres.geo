@@ -1,16 +1,17 @@
 [
-	"fileversion","13.0.665",
+	"fileversion","16.5.378",
+	"hasindex",false,
 	"pointcount",2,
 	"vertexcount",2,
 	"primitivecount",2,
 	"info",{
-		"software":"Houdini 13.0.665",
-		"hostname":"waldos-mbp.home",
+		"software":"Houdini 16.5.378",
+		"hostname":"waldos-macbook-pro.local",
 		"artist":"waldo",
-		"timetocook":1.6e-05,
-		"date":"2015-02-21 21:43:38",
+		"timetocook":0.000248000000000000011,
+		"date":"2018-04-17 21:34:39",
 		"time":0,
-		"bounds":[-1,3.59999990463,-1,1,-1,1],
+		"bounds":[-1,3.5999999,-1,1,-1,1],
 		"primcount_summary":"          2 Spheres\n",
 		"attribute_summary":"     1 point attributes:\tP\n"
 	},
@@ -20,8 +21,6 @@
 		]
 	],
 	"attributes",[
-		"vertexattributes",[
-		],
 		"pointattributes",[
 			[
 				[
@@ -31,22 +30,22 @@
 					"options",{
 						"type":{
 							"type":"string",
-							"value":"hpoint"
+							"value":"point"
 						}
 					}
 				],
 				[
-					"size",4,
+					"size",3,
 					"storage","fpreal32",
 					"defaults",[
-						"size",4,
+						"size",1,
 						"storage","fpreal64",
-						"values",[0,0,0,1]
+						"values",[0]
 					],
 					"values",[
-						"size",4,
+						"size",3,
 						"storage","fpreal32",
-						"tuples",[[0,0,0,1],[2.59999990463,0,0,1]
+						"tuples",[[0,0,0],[2.5999999,0,0]
 						]
 					]
 				]
