@@ -28,25 +28,31 @@ namespace Houdini.GeoImporter
 
             foreach (var assetPath in houdiniGeosImported)
             {
-                //Debug.Log("Importing: " + assetPath);
-
                 string outDir = Path.GetDirectoryName(assetPath);
                 string assetName = Path.GetFileNameWithoutExtension(assetPath);
 
                 // Parse geo
-                var geoOutputPath = string.Format("{0}/{1}.asset", outDir, assetName);
-                var houdiniGeo = AssetDatabase.LoadAllAssetsAtPath(geoOutputPath).Where(a => a is HoudiniGeo).FirstOrDefault() as HoudiniGeo;
-                if (houdiniGeo == null)
+                try
                 {
-                    houdiniGeo = ScriptableObject.CreateInstance<HoudiniGeo>();
-                    AssetDatabase.CreateAsset(houdiniGeo, geoOutputPath);
+                    var geoOutputPath = string.Format("{0}/{1}.asset", outDir, assetName);
+                    var houdiniGeo = AssetDatabase.LoadAllAssetsAtPath(geoOutputPath).Where(a => a is HoudiniGeo).FirstOrDefault() as HoudiniGeo;
+                    if (houdiniGeo == null)
+                    {
+                        houdiniGeo = ScriptableObject.CreateInstance<HoudiniGeo>();
+                        AssetDatabase.CreateAsset(houdiniGeo, geoOutputPath);
+                    }
+
+                    HoudiniGeoFileParser.ParseInto(assetPath, houdiniGeo);
+
+                    houdiniGeo.ImportAllMeshes();
+
+                    EditorUtility.SetDirty(houdiniGeo);
                 }
-
-                HoudiniGeoFileParser.ParseInto(assetPath, houdiniGeo);
-
-                houdiniGeo.ImportAllMeshes();
-
-                EditorUtility.SetDirty(houdiniGeo);
+                catch (System.Exception e)
+                {
+                    Debug.LogError("Houdini.GeoImporter: failed to import asset " + assetPath);
+                    Debug.LogException(e);
+                }
             }
 
             if (houdiniGeosImported.Length > 0)
