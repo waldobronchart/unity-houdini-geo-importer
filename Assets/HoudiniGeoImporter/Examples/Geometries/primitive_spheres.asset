@@ -22,10 +22,10 @@ MonoBehaviour:
     software: Houdini 13.0.665
     hostname: waldos-mbp.home
     artist: waldo
-    timeToCook: 1.6e-05
+    timeToCook: 0.000016
     bounds:
-      m_Center: {x: -1, y: 3.5999999, z: -1}
-      m_Extent: {x: .5, y: -.5, z: .5}
+      m_Center: {x: -1, y: 3.6, z: -1}
+      m_Extent: {x: 0.5, y: -0.5, z: 0.5}
     primCountSummary: '          2 Spheres
 
 '
@@ -41,7 +41,7 @@ MonoBehaviour:
     - 0
     - 0
     - 1
-    - 2.5999999
+    - 2.6
     - 0
     - 0
     - 1

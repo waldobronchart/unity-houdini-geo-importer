@@ -305,7 +305,6 @@ namespace Houdini.GeoImporter
 			{
 				mesh.RecalculateNormals();
 			}
-			mesh.Optimize();
 		}
 
 		private static void ConvertToUnityCoordinates(this Mesh mesh)
