@@ -506,14 +506,14 @@ namespace Houdini.GeoImporter
             }
 
             // Naive triangulation! Does not work for convex ngons
-            List<int> triangles = new List<int>();
-            for (int offset=1; offset<indices.Length-1; offset++)
+            int[] triangles = new int[(indices.Length - 2) * 3];
+            for (int t=0, offset=1; offset<indices.Length-1; offset++)
             {
-                triangles.Add(indices[0]);
-                triangles.Add(indices[offset]);
-                triangles.Add(indices[offset+1]);
+                triangles[t++] = indices[0];
+                triangles[t++] = indices[offset];
+                triangles[t++] = indices[offset+1];
             }
-            return triangles.ToArray();
+            return triangles;
         }
 
 
