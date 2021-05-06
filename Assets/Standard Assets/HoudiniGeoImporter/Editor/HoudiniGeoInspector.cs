@@ -8,10 +8,6 @@
 
 using UnityEngine;
 using UnityEditor;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.IO;
 
 namespace Houdini.GeoImporter
 {
@@ -20,9 +16,9 @@ namespace Houdini.GeoImporter
     {
         public override void OnInspectorGUI()
         {
-            base.DrawDefaultInspector();
+            DrawDefaultInspector();
 
-            var houdiniGeo = target as HoudiniGeo;
+            HoudiniGeo houdiniGeo = target as HoudiniGeo;
 
             GUILayout.Space(20);
             GUILayout.BeginHorizontal();

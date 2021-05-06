@@ -151,6 +151,8 @@ namespace Houdini.GeoImporter
 
     public class HoudiniGeo : ScriptableObject
     {
+        public const string EXTENSION = "geo";
+        
         public const string POS_ATTR_NAME = "P";
         public const string NORMAL_ATTR_NAME = "N";
         public const string COLOR_ATTR_NAME = "Cd";
