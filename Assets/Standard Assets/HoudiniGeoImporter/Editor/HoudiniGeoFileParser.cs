@@ -110,10 +110,10 @@ namespace Houdini.GeoImporter
             fileInfo.date = infoValueToken["date"].Value<System.DateTime>();
 
             float[] bv = infoValueToken["bounds"].Values<float>().ToArray();
-            Vector3 boundsMax = new Vector3(bv[0], bv[1], bv[2]);
-            Vector3 boundsMin = new Vector3(bv[3], bv[4], bv[5]);
-            fileInfo.bounds = new Bounds(boundsMax, Vector3.zero);
-            fileInfo.bounds.Expand(boundsMin);
+            Vector3 boundsMin = new Vector3(bv[0], bv[1], bv[2]);
+            Vector3 boundsMax = new Vector3(bv[3], bv[4], bv[5]);
+            fileInfo.bounds = new Bounds();
+            fileInfo.bounds.SetMinMax(boundsMin, boundsMax);
 
             bool hadPrimCountSummary = infoValueToken.TryGetValue("primcount_summary", out JToken primcountSummary);
             if (hadPrimCountSummary)
