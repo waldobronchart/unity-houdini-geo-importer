@@ -114,7 +114,10 @@ namespace Houdini.GeoImporter
             fileInfo.bounds = new Bounds(boundsMax, Vector3.zero);
             fileInfo.bounds.Expand(boundsMin);
 
-            fileInfo.primCountSummary = infoValueToken["primcount_summary"].Value<string>();
+            bool hadPrimCountSummary = infoValueToken.TryGetValue("primcount_summary", out JToken primcountSummary);
+            if (hadPrimCountSummary)
+                fileInfo.primCountSummary = primcountSummary.Value<string>();
+            
             fileInfo.attributeSummary = infoValueToken["attribute_summary"].Value<string>();
 
             return fileInfo;
