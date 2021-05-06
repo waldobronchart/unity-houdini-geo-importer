@@ -52,7 +52,7 @@ namespace Houdini.GeoImporter
                 {
                     {"pointref", new Dictionary<string, object>
                     {
-                        {"indices", new Dictionary<string, object> {}}
+                        {"indices", data.pointRefs}
                     }}
                 }},
             };
