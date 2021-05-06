@@ -19,11 +19,12 @@ namespace Houdini.GeoImporter
     [Serializable]
     public class HoudiniGeoFileInfo
     {
-        public string software;
-        public string hostname;
-        public string artist;
-        public float timeToCook;
         public DateTime date;
+        public float timeToCook;
+        public string software;
+        public string artist;
+        public string hostname;
+        public float time; // TODO: What is this for? It was missing but I just see it being 0 in GEO files.
         public Bounds bounds;
         public string primCountSummary;
         public string attributeSummary;
