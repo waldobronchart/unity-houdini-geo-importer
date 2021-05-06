@@ -87,6 +87,10 @@ namespace Newtonsoft.Json
             if (CurrentHierarchy == Hierarchies.Dictionary && valueType == ValueTypes.DictionaryValue)
                 return;
             
+            // Regular old arrays don't get linebreaks.
+            if (CurrentHierarchy == Hierarchies.Array)
+                return;
+            
             WriteIndent(true);
         }
 
