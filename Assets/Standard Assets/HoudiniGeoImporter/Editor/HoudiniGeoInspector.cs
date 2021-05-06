@@ -48,6 +48,8 @@ namespace Houdini.GeoImporter
 
         private void DrawExportSection()
         {
+            HoudiniGeo houdiniGeo = target as HoudiniGeo;
+            
             serializedObject.Update();
 
             // Nicely format the export related field and buttons.
@@ -63,7 +65,7 @@ namespace Houdini.GeoImporter
             EditorGUILayout.EndHorizontal();
             
             if (pressedExport)
-                Debug.Log("TODO: Actually export the .geo file");
+                HoudiniGeoFileExporter.Export(houdiniGeo);
 
             // Show a nice dialog for picking a directory.
             if (pressedPick)
