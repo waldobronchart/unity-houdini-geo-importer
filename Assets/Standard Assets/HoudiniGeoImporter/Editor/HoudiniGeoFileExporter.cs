@@ -59,8 +59,51 @@ namespace Houdini.GeoImporter
                     }
                 }
             });
+
+            AddAttributesToDictionary(dictionary);
             
             writer.WriteValue(dictionary);
+        }
+
+        private static void AddAttributesToDictionary(Dictionary<string, object> dictionary)
+        {
+            // Add the attributes dictionary itself.
+            Dictionary<string, object> attributesDictionary = new Dictionary<string, object>();
+            dictionary.Add("attributes", attributesDictionary);
+            
+            // Now add a dictionary to that dictionary for every type of attribute owner.
+            foreach (KeyValuePair<string,HoudiniGeoAttributeOwner> kvp in HoudiniGeoFileParser.ATTRIBUTES_TO_PARSE)
+            {
+                List<object> ownerTypeAttributes = new List<object>(); 
+                
+                foreach (HoudiniGeoAttribute attribute in data.attributes)
+                {
+                    if (attribute.owner != kvp.Value)
+                        continue;
+                    
+                    // Each attribute has a list with two dictionaries: a header and a body.
+                    List<object> attributeDictionaries = new List<object>();
+                    ownerTypeAttributes.Add(attributeDictionaries);
+
+                    // Header dictionary.
+                    Dictionary<string, object> header = new Dictionary<string, object>()
+                    {
+                        {"scope", "public"}
+                    };
+                    attributeDictionaries.Add(header);
+                    
+                    // Body dictionary.
+                    Dictionary<string, object> body = new Dictionary<string, object>()
+                    {
+                        {"size", 3}
+                    };
+                    attributeDictionaries.Add(body);
+                }
+
+                // Only add it if there actually are attributes for this owner type.
+                if (ownerTypeAttributes.Count > 0)
+                    attributesDictionary.Add(kvp.Key, ownerTypeAttributes);
+            }
         }
 
         private static void SaveDataToFile()
