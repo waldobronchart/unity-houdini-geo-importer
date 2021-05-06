@@ -74,6 +74,7 @@ namespace Houdini.GeoImporter
             houdiniGeo.sourceAsset = AssetDatabase.LoadMainAssetAtPath(assetPath);
             
             houdiniGeo.fileVersion = geoDataDict["fileversion"].ValueSafe<string>();
+            houdiniGeo.hasIndex = geoDataDict["hasindex"].ValueSafe<bool>();
             houdiniGeo.pointCount = geoDataDict["pointcount"].ValueSafe<int>();
             houdiniGeo.vertexCount = geoDataDict["vertexcount"].ValueSafe<int>();
             houdiniGeo.primCount = geoDataDict["primitivecount"].ValueSafe<int>();

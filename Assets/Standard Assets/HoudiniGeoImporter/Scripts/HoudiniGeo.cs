@@ -168,6 +168,7 @@ namespace Houdini.GeoImporter
         public HoudiniGeoImportSettings importSettings;
 
         public string fileVersion;
+        public bool hasIndex;
         public int pointCount;
         public int vertexCount;
         public int primCount;
