@@ -40,22 +40,26 @@ namespace Houdini.GeoImporter
 
         private static void WriteData()
         {
-            Dictionary<string, object> dictionary = new Dictionary<string, object>()
+            Dictionary<string, object> dictionary = new Dictionary<string, object>();
+            
+            // File info
+            dictionary.Add("fileversion", data.fileVersion);
+            dictionary.Add("hasindex", data.hasIndex);
+            dictionary.Add("pointcount", data.pointCount);
+            dictionary.Add("vertexcount", data.vertexCount);
+            dictionary.Add("primitivecount", data.primCount);
+            dictionary.Add("info", data.fileInfo);
+
+            // Topology
+            dictionary.Add("topology", new Dictionary<string, object>
             {
-                {"fileversion", data.fileVersion},
-                {"hasindex", data.hasIndex},
-                {"pointcount", data.pointCount},
-                {"vertexcount", data.vertexCount},
-                {"primitivecount", data.primCount},
-                {"info", data.fileInfo},
-                {"topology", new Dictionary<string, object>
-                {
-                    {"pointref", new Dictionary<string, object>
+                {"pointref", new Dictionary<string, object>
                     {
                         {"indices", data.pointRefs}
-                    }}
-                }},
-            };
+                    }
+                }
+            });
+            
             writer.WriteValue(dictionary);
         }
 
