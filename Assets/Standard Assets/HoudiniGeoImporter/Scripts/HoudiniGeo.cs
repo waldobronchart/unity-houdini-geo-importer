@@ -184,5 +184,7 @@ namespace Houdini.GeoImporter
         public PrimitiveGroup[] primitiveGroups;
         public PointGroup[] pointGroups;
         public EdgeGroup[] edgeGroups;
+
+        [HideInInspector] public string exportPath;
     }
 }
