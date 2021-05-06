@@ -138,7 +138,23 @@ namespace Houdini.GeoImporter
             geo.pointRefs = pointRefDict["indices"].Values<int>().ToArray();
         }
 
-        private static Dictionary<string, HoudiniGeoAttributeOwner> ATTRIBUTES_TO_PARSE;
+        private static Dictionary<string, HoudiniGeoAttributeOwner> CACHED_ATTRIBUTES_TO_PARSE;
+        public static Dictionary<string, HoudiniGeoAttributeOwner> ATTRIBUTES_TO_PARSE
+        {
+            get
+            {
+                if (CACHED_ATTRIBUTES_TO_PARSE == null)
+                {
+                    CACHED_ATTRIBUTES_TO_PARSE = new Dictionary<string, HoudiniGeoAttributeOwner>();
+                    CACHED_ATTRIBUTES_TO_PARSE.Add("vertexattributes", HoudiniGeoAttributeOwner.Vertex);
+                    CACHED_ATTRIBUTES_TO_PARSE.Add("pointattributes", HoudiniGeoAttributeOwner.Point);
+                    CACHED_ATTRIBUTES_TO_PARSE.Add("primitiveattributes", HoudiniGeoAttributeOwner.Primitive);
+                    CACHED_ATTRIBUTES_TO_PARSE.Add("globalattributes", HoudiniGeoAttributeOwner.Detail);
+                }
+                return CACHED_ATTRIBUTES_TO_PARSE;
+            }
+        }
+        
 
         private static void ParseAttributes(HoudiniGeo geo, JToken attributesValueToken)
         {
@@ -155,15 +171,6 @@ namespace Houdini.GeoImporter
             // 		],
             //		...
             // ],
-
-            if (ATTRIBUTES_TO_PARSE == null)
-            {
-                ATTRIBUTES_TO_PARSE = new Dictionary<string, HoudiniGeoAttributeOwner>();
-                ATTRIBUTES_TO_PARSE.Add("vertexattributes", HoudiniGeoAttributeOwner.Vertex);
-                ATTRIBUTES_TO_PARSE.Add("pointattributes", HoudiniGeoAttributeOwner.Point);
-                ATTRIBUTES_TO_PARSE.Add("primitiveattributes", HoudiniGeoAttributeOwner.Primitive);
-                ATTRIBUTES_TO_PARSE.Add("globalattributes", HoudiniGeoAttributeOwner.Detail);
-            }
 
             Dictionary<string, JToken> attributeTokensDict = ArrayKeyValueToDictionary(attributesValueToken.Children().ToArray());
 
