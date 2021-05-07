@@ -35,6 +35,14 @@ namespace Houdini.GeoImporter
                 this.type.value = value;
             }
         }
+
+        private static readonly Dictionary<string, AttributeOptions> attributeOptionsByName =
+            new Dictionary<string, AttributeOptions>
+            {
+                { "P", new AttributeOptions("string", "point") },
+                { "N", new AttributeOptions("string", "normal") },
+                { "Cd", new AttributeOptions("string", "color") },
+            };
         
         private const string DateFormat = "yyyy-MM-d HH:mm:ss";
         
@@ -142,10 +150,10 @@ namespace Houdini.GeoImporter
                 {"type", typeString},
                 {"name", attribute.name},
                 {
-                    "options", // TODO: What is this for?
-                    attribute.type == HoudiniGeoAttributeType.String
-                        ? new object()
-                        : new AttributeOptions("string", "point")
+                    "options", // TODO: What is this for exactly? Looks like it only exists for built-in attributes?
+                    attributeOptionsByName.TryGetValue(attribute.name, out AttributeOptions options)
+                        ? options
+                        : new object()
                 },
             };
             attributeDictionaries.Add(header);
