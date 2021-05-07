@@ -248,6 +248,11 @@ namespace Houdini.GeoImporter
         private static T[][] BreakIntoTuples<T>(T[] sequential, int tupleSize)
         {
             List<T[]> tuples = new List<T[]>();
+            
+            // If the tuple size is 1, just treat the whole data as one big tuple.
+            if (tupleSize == 1)
+                tupleSize = sequential.Length;
+            
             for (int i = 0; i <= sequential.Length - tupleSize; i += tupleSize)
             {
                 T[] tuple = new T[tupleSize];
