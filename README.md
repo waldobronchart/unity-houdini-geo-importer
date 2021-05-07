@@ -2,7 +2,7 @@
 
 Based on [Waldo Bronchart's](https://github.com/waldobronchart) [unity-houdini-geo-importer](https://github.com/waldobronchart/unity-houdini-geo-importer)
 
-Imports and exports _.geo_ files. Focused on quickly and conveniently passing points with attributes between Unity and Houdini.
+Imports and exports _.geo_ files. Quickly and conveniently passes points with attributes between Unity and Houdini.
 
 Dependencies: `JsonDotNet`
 
