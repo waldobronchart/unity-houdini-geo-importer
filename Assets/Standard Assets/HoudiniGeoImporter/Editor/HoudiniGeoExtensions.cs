@@ -16,6 +16,7 @@ using System.Linq;
 using System.IO;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.Serialization;
 
 namespace Houdini.GeoImporter
 {
@@ -664,6 +665,56 @@ namespace Houdini.GeoImporter
             
             attribute.name = fieldInfo.Name;
             return true;
+        }
+
+        public static PointCollection<PointType> GetPoints<PointType>(this HoudiniGeo houdiniGeo)
+            where PointType : PointData
+        {
+            PointCollection<PointType> points = new PointCollection<PointType>();
+            Type pointType = typeof(PointType);
+
+            for (int i = 0; i < houdiniGeo.pointCount; i++)
+            {
+                PointType point = (PointType)FormatterServices.GetUninitializedObject(typeof(PointType));
+
+                foreach (HoudiniGeoAttribute attribute in houdiniGeo.attributes)
+                {
+                    FieldInfo field = pointType.GetField(attribute.name);
+                    object value = GetAttributeValue(field.FieldType, attribute, i);
+                    
+                    if (value != null)
+                        field.SetValue(point, value);
+                }
+                
+                points.Add(point);
+            }
+            
+            return points;
+        }
+
+        private static object GetAttributeValue(Type type, HoudiniGeoAttribute attribute, int index)
+        {
+            if (type == typeof(float))
+                return attribute.floatValues[index];
+            if (type == typeof(int))
+                return attribute.intValues[index];
+            if (type == typeof(string))
+                return attribute.stringValues[index];
+            if (type == typeof(Vector2))
+                return new Vector2(attribute.floatValues[index * 2], attribute.floatValues[index * 2 + 1]);
+            if (type == typeof(Vector3))
+                return new Vector3(attribute.floatValues[index * 3], attribute.floatValues[index * 3 + 1], attribute.floatValues[index * 3 + 2]);
+            if (type == typeof(Vector4))
+                return new Vector4(attribute.floatValues[index * 4], attribute.floatValues[index * 4 + 1], attribute.floatValues[index * 4 + 2], attribute.floatValues[index * 4 + 3]);
+            if (type == typeof(Vector2Int))
+                return new Vector2Int(attribute.intValues[index * 2], attribute.intValues[index * 2 + 1]);
+            if (type == typeof(Vector3Int))
+                return new Vector3Int(attribute.intValues[index * 3], attribute.intValues[index * 3 + 1], attribute.intValues[index * 3 + 2]);
+            if (type == typeof(Color))
+                return new Color(attribute.floatValues[index * 3], attribute.floatValues[index * 3 + 1], attribute.floatValues[index * 3 + 2]);
+            
+            Debug.LogWarning($"Tried to get value of unrecognized type '{type.Name}'");
+            return null;
         }
     }
 }
