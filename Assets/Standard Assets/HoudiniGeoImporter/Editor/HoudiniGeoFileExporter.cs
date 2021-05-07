@@ -263,8 +263,8 @@ namespace Houdini.GeoImporter
 
             string path = data.exportPath;
 
-            // NOTE: For now we change the extension to .txt because it won't be parsed properly yet anyway.
-            path = Path.ChangeExtension(path, "txt");
+            // DEBUG: Change the extension to .txt so it doesn't get parsed as a Houdini file yet while working.
+            //path = Path.ChangeExtension(path, "txt");
 
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             File.WriteAllText(path, text);
