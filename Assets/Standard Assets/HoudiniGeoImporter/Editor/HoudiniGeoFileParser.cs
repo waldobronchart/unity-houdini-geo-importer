@@ -6,6 +6,7 @@
  * Some rights reserved. See COPYING, AUTHORS.
  */
 
+using System;
 using UnityEngine;
 using UnityEditor;
 using System.Collections;
@@ -485,6 +486,24 @@ namespace Houdini.GeoImporter
                 default:
                     throw new HoudiniGeoParseException("Unexpected attribute type: " + enumValue);
             }
+        }
+
+        public static string AttributeTypeEnumValueToCategoryString(HoudiniGeoAttributeType enumValue)
+        {
+            string typeString = null;
+            switch (enumValue)
+            {
+                case HoudiniGeoAttributeType.Float:
+                case HoudiniGeoAttributeType.Integer:
+                    typeString = "numeric";
+                    break;
+                case HoudiniGeoAttributeType.String:
+                    typeString = "string";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+            return typeString;
         }
     }
 }

@@ -62,27 +62,37 @@ namespace Houdini.GeoImporter
         {
             Dictionary<string, object> dictionary = new Dictionary<string, object>();
             
-            // File info
+            AddFileInfoToDictionary(dictionary);
+
+            AddTopologyToDictionary(dictionary);
+
+            AddAttributesToDictionary(dictionary);
+            
+            writer.WriteValue(dictionary);
+        }
+
+        private static void AddFileInfoToDictionary(Dictionary<string, object> dictionary)
+        {
             dictionary.Add("fileversion", data.fileVersion);
             dictionary.Add("hasindex", data.hasIndex);
             dictionary.Add("pointcount", data.pointCount);
             dictionary.Add("vertexcount", data.vertexCount);
             dictionary.Add("primitivecount", data.primCount);
             dictionary.Add("info", data.fileInfo);
+        }
 
-            // Topology
-            dictionary.Add("topology", new Dictionary<string, object>
-            {
-                {"pointref", new Dictionary<string, object>
+        private static void AddTopologyToDictionary(Dictionary<string, object> dictionary)
+        {
+            dictionary.Add(
+                "topology", new Dictionary<string, object>
+                {
                     {
-                        {"indices", data.pointRefs}
+                        "pointref", new Dictionary<string, object>
+                        {
+                            {"indices", data.pointRefs}
+                        }
                     }
-                }
-            });
-
-            AddAttributesToDictionary(dictionary);
-            
-            writer.WriteValue(dictionary);
+                });
         }
 
         private static void AddAttributesToDictionary(Dictionary<string, object> dictionary)
@@ -91,108 +101,111 @@ namespace Houdini.GeoImporter
             Dictionary<string, object> attributesDictionary = new Dictionary<string, object>();
             dictionary.Add("attributes", attributesDictionary);
             
-            // Now add a dictionary to that dictionary for every type of attribute owner.
+            // Now add an array to that dictionary for every type of attribute owner.
             foreach (KeyValuePair<string,HoudiniGeoAttributeOwner> kvp in HoudiniGeoFileParser.ATTRIBUTES_TO_PARSE)
             {
                 List<object> ownerTypeAttributes = new List<object>(); 
                 
+                // Populate the attribute owner's array with all attributes of that owner (vertex/point/primitive/detail).
                 foreach (HoudiniGeoAttribute attribute in data.attributes)
                 {
                     if (attribute.owner != kvp.Value)
                         continue;
-                    
-                    string typeString = null;
-                    switch (attribute.type)
-                    {
-                        case HoudiniGeoAttributeType.Float:
-                        case HoudiniGeoAttributeType.Integer:
-                            typeString = "numeric";
-                            break;
-                        case HoudiniGeoAttributeType.String:
-                            typeString = "string";
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException();
-                    }
-                    
-                    // Each attribute has a list with two dictionaries: a header and a body.
-                    List<object> attributeDictionaries = new List<object>();
-                    ownerTypeAttributes.Add(attributeDictionaries);
 
-                    // Header dictionary.
-                    Dictionary<string, object> header = new Dictionary<string, object>()
-                    {
-                        {"scope", "public"}, // TODO: Does this ever vary?
-                        {"type", typeString},
-                        {"name", attribute.name},
-                        {"options", attribute.type == HoudiniGeoAttributeType.String ? new object() : new AttributeOptions("string", "point")}, // TODO: What is this for?
-                    };
-                    attributeDictionaries.Add(header);
-                    
-                    // Body dictionary.
-                    Dictionary<string, object> body = new Dictionary<string, object>();
-                    body.Add("size", attribute.tupleSize); // TODO: Is this a duplicate of values.size down below?
-                    string storageType;
-                    switch (attribute.type)
-                    {
-                        // Numeric types
-                        case HoudiniGeoAttributeType.Float:
-                        case HoudiniGeoAttributeType.Integer:
-                            storageType = HoudiniGeoFileParser.AttributeEnumValueToTypeStr(attribute.type);
-                            body.Add("storage", storageType);
-                            
-                            // TODO: What are we supposed to fill in for the defaults?
-                            Dictionary<string, object> defaultsDictionary = new Dictionary<string, object>();
-                            body.Add("defaults", defaultsDictionary);
-                            defaultsDictionary.Add("size", 1);
-                            defaultsDictionary.Add("storage", storageType);  // TODO: Is this duplicated from the storage type above?
-                            defaultsDictionary.Add("values", new float[] { 0 });
-                            
-                            // Actual values
-                            Dictionary<string, object> valuesDictionary = new Dictionary<string, object>();
-                            body.Add("values", valuesDictionary);
-                            valuesDictionary.Add("size", attribute.tupleSize); // TODO: Is this a duplicate of the tuple size above?
-                            valuesDictionary.Add("storage", storageType); // TODO: Also duplicated?
-
-                            // Tuples.
-                            if (attribute.type == HoudiniGeoAttributeType.Float)
-                            {
-                                string valuesKey = attribute.tupleSize == 1 ? "arrays" : "tuples";
-                                valuesDictionary.Add(valuesKey, BreakIntoTuples(attribute.floatValues, attribute.tupleSize));
-                            }
-                            else if (attribute.type == HoudiniGeoAttributeType.Integer)
-                            {
-                                valuesDictionary.Add("arrays", BreakIntoTuples(attribute.intValues, attribute.tupleSize));
-                            }
-                            break;
-                        // String types
-                        case HoudiniGeoAttributeType.String:
-                            // TODO: Why is storage type integer for strings and is it always like that?
-                            storageType = HoudiniGeoFileParser.AttributeEnumValueToTypeStr(HoudiniGeoAttributeType.Integer);
-                            body.Add("storage", storageType);
-
-                            BreakIntoUniqueStringsAndIndices(
-                                attribute.stringValues, out string[] uniqueStrings, out int[] indices);
-                            body.Add("strings", uniqueStrings);
-                            
-                            Dictionary<string, object> indicesDictionary = new Dictionary<string, object>();
-                            body.Add("indices", indicesDictionary);
-                            indicesDictionary.Add("size", attribute.tupleSize);
-                            indicesDictionary.Add("storage", storageType);
-                            
-                            indicesDictionary.Add("arrays", new int[][] { indices });
-                            break;
-                        case HoudiniGeoAttributeType.Invalid:
-                        default:
-                            throw new ArgumentOutOfRangeException();
-                    }
-                    attributeDictionaries.Add(body);
+                    AddSingleAttributeToDictionary(ownerTypeAttributes, attribute);
                 }
 
                 // Only add it if there actually are attributes for this owner type.
                 if (ownerTypeAttributes.Count > 0)
                     attributesDictionary.Add(kvp.Key, ownerTypeAttributes);
             }
+        }
+
+        private static void AddSingleAttributeToDictionary(List<object> attributes, HoudiniGeoAttribute attribute)
+        {
+            string typeString = HoudiniGeoFileParser.AttributeTypeEnumValueToCategoryString(attribute.type);
+
+            // Each attribute has a list with two dictionaries: a header and a body.
+            List<object> attributeDictionaries = new List<object>();
+            attributes.Add(attributeDictionaries);
+
+            // Header dictionary.
+            Dictionary<string, object> header = new Dictionary<string, object>()
+            {
+                {"scope", "public"}, // TODO: Does this ever vary?
+                {"type", typeString},
+                {"name", attribute.name},
+                {
+                    "options", // TODO: What is this for?
+                    attribute.type == HoudiniGeoAttributeType.String
+                        ? new object()
+                        : new AttributeOptions("string", "point")
+                },
+            };
+            attributeDictionaries.Add(header);
+
+            // Body dictionary.
+            Dictionary<string, object> body = new Dictionary<string, object>();
+            body.Add("size", attribute.tupleSize); // TODO: Is this a duplicate of values.size down below?
+            string storageType;
+            switch (attribute.type)
+            {
+                // Numeric types
+                case HoudiniGeoAttributeType.Float:
+                case HoudiniGeoAttributeType.Integer:
+                    storageType = HoudiniGeoFileParser.AttributeEnumValueToTypeStr(attribute.type);
+                    body.Add("storage", storageType);
+
+                    // TODO: What are we supposed to fill in for the defaults?
+                    Dictionary<string, object> defaultsDictionary = new Dictionary<string, object>();
+                    body.Add("defaults", defaultsDictionary);
+                    defaultsDictionary.Add("size", 1);
+                    defaultsDictionary.Add(
+                        "storage", storageType); // TODO: Is this duplicated from the storage type above?
+                    defaultsDictionary.Add("values", new float[] {0});
+
+                    // Actual values
+                    Dictionary<string, object> valuesDictionary = new Dictionary<string, object>();
+                    body.Add("values", valuesDictionary);
+                    valuesDictionary.Add(
+                        "size", attribute.tupleSize); // TODO: Is this a duplicate of the tuple size above?
+                    valuesDictionary.Add("storage", storageType); // TODO: Also duplicated?
+
+                    // Tuples.
+                    if (attribute.type == HoudiniGeoAttributeType.Float)
+                    {
+                        string valuesKey = attribute.tupleSize == 1 ? "arrays" : "tuples";
+                        valuesDictionary.Add(valuesKey, BreakIntoTuples(attribute.floatValues, attribute.tupleSize));
+                    }
+                    else if (attribute.type == HoudiniGeoAttributeType.Integer)
+                    {
+                        valuesDictionary.Add("arrays", BreakIntoTuples(attribute.intValues, attribute.tupleSize));
+                    }
+
+                    break;
+                // String types
+                case HoudiniGeoAttributeType.String:
+                    // TODO: Why is storage type integer for strings and is it always like that?
+                    storageType = HoudiniGeoFileParser.AttributeEnumValueToTypeStr(HoudiniGeoAttributeType.Integer);
+                    body.Add("storage", storageType);
+
+                    BreakIntoUniqueStringsAndIndices(
+                        attribute.stringValues, out string[] uniqueStrings, out int[] indices);
+                    body.Add("strings", uniqueStrings);
+
+                    Dictionary<string, object> indicesDictionary = new Dictionary<string, object>();
+                    body.Add("indices", indicesDictionary);
+                    indicesDictionary.Add("size", attribute.tupleSize);
+                    indicesDictionary.Add("storage", storageType);
+
+                    indicesDictionary.Add("arrays", new int[][] {indices});
+                    break;
+                case HoudiniGeoAttributeType.Invalid:
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
+            attributeDictionaries.Add(body);
         }
 
         private static void BreakIntoUniqueStringsAndIndices(string[] duplicated, out string[] unique, out int[] indices)
