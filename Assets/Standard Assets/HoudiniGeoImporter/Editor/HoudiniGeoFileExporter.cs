@@ -80,7 +80,11 @@ namespace Houdini.GeoImporter
             dictionary.Add("pointcount", data.pointCount);
             dictionary.Add("vertexcount", data.vertexCount);
             dictionary.Add("primitivecount", data.primCount);
-            dictionary.Add("info", data.fileInfo);
+            
+            HoudiniGeoFileInfo fileInfo = data.fileInfo.Copy();
+            fileInfo.date = DateTime.Now;
+            
+            dictionary.Add("info", fileInfo);
         }
 
         private static void AddTopologyToDictionary(Dictionary<string, object> dictionary)

@@ -28,6 +28,11 @@ namespace Houdini.GeoImporter
         public Bounds bounds;
         public string primcount_summary;
         public string attribute_summary;
+
+        public HoudiniGeoFileInfo Copy()
+        {
+            return (HoudiniGeoFileInfo)MemberwiseClone();
+        }
     }
 
     public enum HoudiniGeoAttributeType
