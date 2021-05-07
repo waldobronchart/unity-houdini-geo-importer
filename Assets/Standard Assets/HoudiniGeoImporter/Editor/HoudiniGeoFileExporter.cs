@@ -67,6 +67,8 @@ namespace Houdini.GeoImporter
             AddTopologyToDictionary(dictionary);
 
             AddAttributesToDictionary(dictionary);
+
+            AddPrimitivesToDictionary(dictionary);
             
             writer.WriteValue(dictionary);
         }
@@ -244,6 +246,12 @@ namespace Houdini.GeoImporter
                 tuples.Add(tuple);
             }
             return tuples.ToArray();
+        }
+        
+        private static void AddPrimitivesToDictionary(Dictionary<string, object> dictionary)
+        {
+            // TODO: Add primitives support. I'll be honest: I'm really only interested in point data myself.
+            dictionary.Add("primitives", new object[] {});
         }
 
         private static void SaveDataToFile()
