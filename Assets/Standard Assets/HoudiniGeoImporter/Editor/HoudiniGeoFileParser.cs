@@ -107,7 +107,7 @@ namespace Houdini.GeoImporter
             fileInfo.software = infoValueToken["software"].Value<string>();
             fileInfo.hostname = infoValueToken["hostname"].Value<string>();
             fileInfo.artist = infoValueToken["artist"].Value<string>();
-            fileInfo.timeToCook = infoValueToken["timetocook"].Value<float>();
+            fileInfo.timetocook = infoValueToken["timetocook"].Value<float>();
             fileInfo.date = infoValueToken["date"].Value<System.DateTime>();
 
             float[] bv = infoValueToken["bounds"].Values<float>().ToArray();
@@ -118,9 +118,9 @@ namespace Houdini.GeoImporter
 
             bool hadPrimCountSummary = infoValueToken.TryGetValue("primcount_summary", out JToken primcountSummary);
             if (hadPrimCountSummary)
-                fileInfo.primCountSummary = primcountSummary.Value<string>();
+                fileInfo.primcount_summary = primcountSummary.Value<string>();
             
-            fileInfo.attributeSummary = infoValueToken["attribute_summary"].Value<string>();
+            fileInfo.attribute_summary = infoValueToken["attribute_summary"].Value<string>();
 
             return fileInfo;
         }
