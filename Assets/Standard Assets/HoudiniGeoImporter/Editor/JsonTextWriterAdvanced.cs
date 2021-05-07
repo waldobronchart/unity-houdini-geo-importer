@@ -21,6 +21,14 @@ namespace Newtonsoft.Json
             DictionaryKey,
             DictionaryValue,
         }
+
+        private static readonly List<string> ARRAYS_THAT_GET_LINEBREAKS = new List<string>
+        {
+            "vertexattributes",
+            "pointattributes",
+            "primitiveattributes",
+            "globalattributes",
+        };
         
         private static JsonSerializer cachedJsonSerializer;
         private static JsonSerializer JsonSerializer
@@ -39,6 +47,12 @@ namespace Newtonsoft.Json
 
         private bool isArrayDictionary;
         private ValueTypes valueType;
+        
+        private Stack<object> dictionaryKeyHierarchy = new Stack<object>();
+
+        private object CurrentDictionaryKey => dictionaryKeyHierarchy.Count == 0 ? null : dictionaryKeyHierarchy.Peek();
+
+        private bool currentArrayWantsLinebreaks;
 
         private Stack<Hierarchies> hierarchyStack = new Stack<Hierarchies>();
         private Hierarchies CurrentHierarchy => hierarchyStack.Peek();
@@ -63,35 +77,48 @@ namespace Newtonsoft.Json
             }
         }
 
-        public void WriteStartDictionary()
-        {
-            isArrayDictionary = true;
-            WriteStartArray();
-            isArrayDictionary = false;
-        }
-        
-        public void WriteDictionaryKeyValuePair(object key, object value)
-        {
-            valueType = ValueTypes.DictionaryKey;
-            WriteValue(key);
-
-            valueType = ValueTypes.DictionaryValue;
-            JsonSerializer.Serialize(this, value);
-            
-            valueType = ValueTypes.Value;
-        }
-
         protected override void WriteIndent()
         {
             // The value of a dictionary's key/value pair does not get indentation...
             if (CurrentHierarchy == Hierarchies.Dictionary && valueType == ValueTypes.DictionaryValue)
                 return;
             
-            // Regular old arrays don't get linebreaks.
-            if (CurrentHierarchy == Hierarchies.Array)
+            // Arrays normally don't get linebreaks, but for specific long arrays like attributes we do want that.
+            if (CurrentHierarchy == Hierarchies.Array && !currentArrayWantsLinebreaks)
                 return;
-            
+
             WriteIndent(true);
+        }
+
+        public void WriteStartDictionary()
+        {
+            isArrayDictionary = true;
+            WriteStartArray();
+            isArrayDictionary = false;
+        }
+
+        private void UpdateArrayWantsLineBreaksState()
+        {
+            currentArrayWantsLinebreaks =
+                CurrentDictionaryKey is string key && ARRAYS_THAT_GET_LINEBREAKS.Contains(key);
+        }
+        
+        public void WriteDictionaryKeyValuePair(object key, object value)
+        {
+            valueType = ValueTypes.DictionaryKey;
+            
+            dictionaryKeyHierarchy.Push(key);
+            UpdateArrayWantsLineBreaksState();
+            
+            WriteValue(key);
+
+            valueType = ValueTypes.DictionaryValue;
+            JsonSerializer.Serialize(this, value);
+            
+            valueType = ValueTypes.Value;
+            
+            dictionaryKeyHierarchy.Pop();
+            UpdateArrayWantsLineBreaksState();
         }
 
         public void WriteEndDictionary()
