@@ -456,7 +456,7 @@ namespace Houdini.GeoImporter
             return tokenDictionary;
         }
 
-        private static HoudiniGeoAttributeType AttributeTypeStrToEnumValue(string typeStr)
+        public static HoudiniGeoAttributeType AttributeTypeStrToEnumValue(string typeStr)
         {
             switch (typeStr.ToLower())
             {
@@ -469,6 +469,21 @@ namespace Houdini.GeoImporter
                 return HoudiniGeoAttributeType.String;
             default:
                 throw new HoudiniGeoParseException("Unexpected attribute type: " + typeStr);
+            }
+        }
+        
+        public static string AttributeEnumValueToTypeStr(HoudiniGeoAttributeType enumValue)
+        {
+            switch (enumValue)
+            {
+                case HoudiniGeoAttributeType.Integer:
+                    return "int32";
+                case HoudiniGeoAttributeType.Float:
+                    return "fpreal64"; // NOTE: Don't know whether to use fpreal32 or fpreal64 so just using 64 for now.
+                case HoudiniGeoAttributeType.String:
+                    return "string";
+                default:
+                    throw new HoudiniGeoParseException("Unexpected attribute type: " + enumValue);
             }
         }
     }
