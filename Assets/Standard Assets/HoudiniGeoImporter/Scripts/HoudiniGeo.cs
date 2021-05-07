@@ -2,6 +2,7 @@
  * Houdini Geo File Importer for Unity
  *
  * Copyright 2015 by Waldo Bronchart <wbronchart@gmail.com>
+ * Exporter added in 2021 by Roy Theunissen <roy.theunissen@live.nl>
  * Licensed under GNU General Public License 3.0 or later. 
  * Some rights reserved. See COPYING, AUTHORS.
  */
@@ -193,5 +194,34 @@ namespace Houdini.GeoImporter
         public EdgeGroup[] edgeGroups;
 
         [HideInInspector] public string exportPath;
+        
+        public static HoudiniGeo Create()
+        {
+            HoudiniGeo geo = CreateInstance<HoudiniGeo>();
+            
+            // Populate it with some default info.
+            geo.fileVersion = "18.5.408";
+            geo.fileInfo = new HoudiniGeoFileInfo
+            {
+                date = DateTime.Now,
+                software = "Unity " + Application.unityVersion,
+                artist = Environment.UserName,
+                hostname = Environment.MachineName,
+            };
+            
+            geo.attributes = new HoudiniGeoAttribute[0];
+            
+            geo.pointRefs = new int[0];
+            
+            geo.polyPrimitives = new PolyPrimitive[0];
+            geo.bezierCurvePrimitives = new BezierCurvePrimitive[0];
+            geo.nurbCurvePrimitives = new NURBCurvePrimitive[0];
+            
+            geo.primitiveGroups = new PrimitiveGroup[0];
+            geo.pointGroups = new PointGroup[0];
+            geo.edgeGroups = new EdgeGroup[0];
+
+            return geo;
+        }
     }
 }
