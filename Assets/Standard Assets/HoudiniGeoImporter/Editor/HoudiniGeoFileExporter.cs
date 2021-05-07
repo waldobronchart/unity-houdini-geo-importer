@@ -49,10 +49,16 @@ namespace Houdini.GeoImporter
         private static StringWriter stringWriter;
         private static JsonTextWriterAdvanced writer;
 
+        private static string path;
         private static HoudiniGeo data;
 
-        public static void Export(HoudiniGeo data)
+        public static void Export(HoudiniGeo data, string path = null)
         {
+            if (string.IsNullOrEmpty(path))
+                HoudiniGeoFileExporter.path = data.exportPath;
+            else
+                HoudiniGeoFileExporter.path = path;
+            
             stringWriter = new StringWriter();
             stringWriter = new StringWriter();
             writer = new JsonTextWriterAdvanced(stringWriter);
@@ -277,8 +283,6 @@ namespace Houdini.GeoImporter
 
             string text = stringWriter.GetStringBuilder().ToString();
             writer.Close();
-
-            string path = data.exportPath;
 
             // DEBUG: Change the extension to .txt so it doesn't get parsed as a Houdini file yet while working.
             //path = Path.ChangeExtension(path, "txt");

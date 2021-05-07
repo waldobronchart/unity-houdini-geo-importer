@@ -527,5 +527,10 @@ namespace Houdini.GeoImporter
             
             return true;
         }
+        
+        public static void Export(this HoudiniGeo houdiniGeo, string path = null)
+        {
+            HoudiniGeoFileExporter.Export(houdiniGeo, path);
+        }
     }
 }
