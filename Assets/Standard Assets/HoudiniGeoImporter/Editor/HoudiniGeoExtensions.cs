@@ -14,6 +14,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using System.Reflection;
+using System.Reflection.Emit;
 
 namespace Houdini.GeoImporter
 {
@@ -531,6 +533,137 @@ namespace Houdini.GeoImporter
         public static void Export(this HoudiniGeo houdiniGeo, string path = null)
         {
             HoudiniGeoFileExporter.Export(houdiniGeo, path);
+        }
+        
+        public static void SetPoints<PointType>(this HoudiniGeo houdiniGeo, PointCollection<PointType> pointCollection)
+            where PointType : PointData
+        {
+            houdiniGeo.pointCount = pointCollection.Count;
+
+            // First create the attributes.
+            Dictionary<FieldInfo, HoudiniGeoAttribute> attributes = new Dictionary<FieldInfo, HoudiniGeoAttribute>();
+            Type pointType = typeof(PointType);
+            FieldInfo[] fieldCandidates =
+                pointType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            foreach (FieldInfo field in fieldCandidates)
+            {
+                // Ignore private fields that aren't tagged with SerializeField. 
+                if (field.IsPrivate && field.GetCustomAttribute<SerializeField>() == null)
+                    continue;
+
+                bool wasValidAttributeType = TryCreateAttribute(field, out HoudiniGeoAttribute attribute);
+                if (!wasValidAttributeType)
+                    continue;
+                
+                attribute.owner = HoudiniGeoAttributeOwner.Point;
+                attributes.Add(field, attribute);
+
+                Debug.Log($"Field {field.Name} ({field.FieldType.Name}) => Attribute {attribute.type}[{attribute.tupleSize}]");
+            }
+            
+            // Then populate the attributes with values.
+            foreach (KeyValuePair<FieldInfo,HoudiniGeoAttribute> kvp in attributes)
+            {
+                List<float> floatValues = new List<float>();
+                List<int> intValues = new List<int>();
+                List<string> stringValues = new List<string>();
+                
+                foreach (PointType point in pointCollection)
+                {
+                    object value = kvp.Key.GetValue(point);
+                    AddValueAsTuples(value, floatValues, intValues, stringValues);
+                }
+
+                kvp.Value.floatValues = floatValues.ToArray();
+                kvp.Value.intValues = intValues.ToArray();
+                kvp.Value.stringValues = stringValues.ToArray();
+            }
+            
+            // Then add the attributes to the geometry.
+            houdiniGeo.attributes = new HoudiniGeoAttribute[attributes.Count];
+            int index = 0;
+            foreach (KeyValuePair<FieldInfo,HoudiniGeoAttribute> kvp in attributes)
+            {
+                houdiniGeo.attributes[index] = kvp.Value;
+                index++;
+            }
+        }
+
+        private static void AddValueAsTuples(
+            object value, List<float> floatValues, List<int> intValues, List<string> stringValues)
+        {
+            switch (value)
+            {
+                case float f:
+                    floatValues.Add(f);
+                    break;
+                case int i:
+                    intValues.Add(i);
+                    break;
+                case string s:
+                    stringValues.Add(s);
+                    break;
+                case Vector2 vector2:
+                    floatValues.Add(vector2.x);
+                    floatValues.Add(vector2.y);
+                    break;
+                case Vector3 vector3:
+                    floatValues.Add(vector3.x);
+                    floatValues.Add(vector3.y);
+                    floatValues.Add(vector3.z);
+                    break;
+                case Vector4 vector4:
+                    floatValues.Add(vector4.x);
+                    floatValues.Add(vector4.y);
+                    floatValues.Add(vector4.z);
+                    floatValues.Add(vector4.w);
+                    break;
+                case Vector2Int vector2Int:
+                    floatValues.Add(vector2Int.x);
+                    floatValues.Add(vector2Int.y);
+                    break;
+                case Vector3Int vector3Int:
+                    floatValues.Add(vector3Int.x);
+                    floatValues.Add(vector3Int.y);
+                    break;
+                case Color color:
+                    floatValues.Add(color.r);
+                    floatValues.Add(color.g);
+                    floatValues.Add(color.b);
+                    break;
+            }
+        }
+
+        private static bool TryCreateAttribute(FieldInfo fieldInfo, out HoudiniGeoAttribute attribute)
+        {
+            attribute = null;
+
+            Type type = fieldInfo.FieldType;
+            
+            if (type == typeof(float))
+                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 1};
+            else if (type == typeof(int))
+                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 1};
+            else if (type == typeof(string))
+                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.String, tupleSize = 1};
+            if (type == typeof(Vector2))
+                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 2};
+            else if (type == typeof(Vector3))
+                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 3};
+            else if (type == typeof(Vector4))
+                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 4};
+            else if (type == typeof(Vector2Int))
+                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 2};
+            else if (type == typeof(Vector3Int))
+                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 3};
+            else if (type == typeof(Color))
+                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 3};
+
+            if (attribute == null)
+                return false;
+            
+            attribute.name = fieldInfo.Name;
+            return true;
         }
     }
 }

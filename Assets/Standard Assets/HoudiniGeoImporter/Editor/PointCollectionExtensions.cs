@@ -42,7 +42,7 @@ namespace Houdini.GeoImporter
 
             HoudiniGeo houdiniGeo = HoudiniGeo.Create();
             
-            // TODO: Assign points and attributes
+            houdiniGeo.SetPoints(pointCollection);
             
             Debug.Log($"Export GEO file '{path}'");
             houdiniGeo.Export(path);
