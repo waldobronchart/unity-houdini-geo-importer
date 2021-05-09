@@ -535,8 +535,10 @@ namespace Houdini.GeoImportExport
         {
             HoudiniGeoFileExporter.Export(houdiniGeo, path);
         }
-        
-        public static void SetPoints<PointType>(this HoudiniGeo houdiniGeo, PointCollection<PointType> pointCollection)
+
+        public static void SetPoints<PointType>(
+            this HoudiniGeo houdiniGeo, PointCollection<PointType> pointCollection,
+            bool convertPosition = true)
             where PointType : PointData
         {
             houdiniGeo.pointCount = pointCollection.Count;
@@ -555,23 +557,28 @@ namespace Houdini.GeoImportExport
                 bool wasValidAttributeType = TryCreateAttribute(field, out HoudiniGeoAttribute attribute);
                 if (!wasValidAttributeType)
                     continue;
-                
+
                 attribute.owner = HoudiniGeoAttributeOwner.Point;
                 attributes.Add(field, attribute);
-
-                Debug.Log($"Field {field.Name} ({field.FieldType.Name}) => Attribute {attribute.type}[{attribute.tupleSize}]");
             }
-            
+
             // Then populate the attributes with values.
-            foreach (KeyValuePair<FieldInfo,HoudiniGeoAttribute> kvp in attributes)
+            foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in attributes)
             {
                 List<float> floatValues = new List<float>();
                 List<int> intValues = new List<int>();
                 List<string> stringValues = new List<string>();
-                
+
                 foreach (PointType point in pointCollection)
                 {
                     object value = kvp.Key.GetValue(point);
+                    
+                    // If specified, automatically translate the position to Houdini's format.
+                    if (convertPosition && kvp.Key.Name == "P")
+                    {
+                        Vector3 p = Units.ToHoudiniPosition((Vector3)value);
+                        value = p;
+                    }
                     AddValueAsTuples(value, floatValues, intValues, stringValues);
                 }
 
@@ -579,11 +586,11 @@ namespace Houdini.GeoImportExport
                 kvp.Value.intValues = intValues.ToArray();
                 kvp.Value.stringValues = stringValues.ToArray();
             }
-            
+
             // Then add the attributes to the geometry.
             houdiniGeo.attributes = new HoudiniGeoAttribute[attributes.Count];
             int index = 0;
-            foreach (KeyValuePair<FieldInfo,HoudiniGeoAttribute> kvp in attributes)
+            foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in attributes)
             {
                 houdiniGeo.attributes[index] = kvp.Value;
                 index++;

@@ -19,13 +19,15 @@ namespace Houdini.GeoImportExport
 {
     public static class PointCollectionExtensions
     {
-        public static void ExportToGeoFile<PointType>(this PointCollection<PointType> pointCollection, string path)
+        public static void ExportToGeoFile<PointType>(
+            this PointCollection<PointType> pointCollection, string path, bool convertPosition = true)
             where PointType : PointData
         {
             // Check if the filename is valid.
             if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(Path.GetFileName(path)))
             {
-                Debug.LogWarning($"Tried to export PointCollection<{typeof(PointType).Name}> to invalid path: '{path}'");
+                Debug.LogWarning(
+                    $"Tried to export PointCollection<{typeof(PointType).Name}> to invalid path: '{path}'");
                 return;
             }
 
@@ -38,12 +40,12 @@ namespace Houdini.GeoImportExport
 
             // Clean up the path a little.
             path = path.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            
+
 
             HoudiniGeo houdiniGeo = HoudiniGeo.Create();
-            
-            houdiniGeo.SetPoints(pointCollection);
-            
+
+            houdiniGeo.SetPoints(pointCollection, convertPosition);
+
             Debug.Log($"Export GEO file '{path}'");
             houdiniGeo.Export(path);
         }
