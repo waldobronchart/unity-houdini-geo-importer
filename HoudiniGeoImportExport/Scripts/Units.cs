@@ -34,5 +34,15 @@ namespace Houdini.GeoImportExport
         {
             return unityDistance * UNITY_TO_HOUDINI_SCALE;
         }
+
+        public static Vector3 ToUnityDirection(Vector3 houdiniDirection)
+        {
+            return new Vector3(-houdiniDirection.x, houdiniDirection.y, houdiniDirection.z).normalized;
+        }
+        
+        public static Vector3 ToHoudiniDirection(Vector3 unityDirection)
+        {
+            return new Vector3(-unityDirection.x, unityDirection.y, unityDirection.z).normalized;
+        }
     }
 }

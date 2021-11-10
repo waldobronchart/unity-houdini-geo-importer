@@ -22,6 +22,9 @@ namespace Houdini.GeoImportExport
 {
     public static class HoudiniGeoExtensions
     {
+        private const string PositionAttributeName = "P";
+        private const string NormalAttributeName = "N";
+        
         internal static void ImportAllMeshes(this HoudiniGeo geo)
         {
             string geoAssetPath = AssetDatabase.GetAssetPath(geo);
@@ -538,7 +541,7 @@ namespace Houdini.GeoImportExport
 
         public static void SetPoints<PointType>(
             this HoudiniGeo houdiniGeo, PointCollection<PointType> pointCollection,
-            bool convertPosition = true)
+            bool convertPosition = true, bool convertNormal = true)
             where PointType : PointData
         {
             houdiniGeo.pointCount = pointCollection.Count;
@@ -574,11 +577,19 @@ namespace Houdini.GeoImportExport
                     object value = kvp.Key.GetValue(point);
                     
                     // If specified, automatically translate the position to Houdini's format.
-                    if (convertPosition && kvp.Key.Name == "P")
+                    if (convertPosition && kvp.Key.Name == PositionAttributeName)
                     {
                         Vector3 p = Units.ToHoudiniPosition((Vector3)value);
                         value = p;
                     }
+                    
+                    // If specified, automatically translate the position to Houdini's format.
+                    if (convertNormal && kvp.Key.Name == NormalAttributeName)
+                    {
+                        Vector3 n = Units.ToHoudiniDirection((Vector3)value);
+                        value = n;
+                    }
+                    
                     AddValueAsTuples(value, floatValues, intValues, stringValues);
                 }
 
@@ -674,7 +685,8 @@ namespace Houdini.GeoImportExport
             return true;
         }
 
-        public static PointCollection<PointType> GetPoints<PointType>(this HoudiniGeo houdiniGeo)
+        public static PointCollection<PointType> GetPoints<PointType>(
+            this HoudiniGeo houdiniGeo, bool convertPosition = true, bool convertNormal = true)
             where PointType : PointData
         {
             PointCollection<PointType> points = new PointCollection<PointType>();
@@ -687,15 +699,36 @@ namespace Houdini.GeoImportExport
                 foreach (HoudiniGeoAttribute attribute in houdiniGeo.attributes)
                 {
                     FieldInfo field = pointType.GetField(attribute.name);
+
+                    // The point doesn't necessarily need to support every attribute that exists in the file.
+                    if (field == null)
+                        continue;
+
                     object value = GetAttributeValue(field.FieldType, attribute, i);
-                    
+
                     if (value != null)
+                    {
+                        // If specified, automatically translate the position to Unity's format.
+                        if (convertPosition && attribute.name == PositionAttributeName)
+                        {
+                            Vector3 p = Units.ToUnityPosition((Vector3)value);
+                            value = p;
+                        }
+                        
+                        // If specified, automatically translate the position to Unity's format.
+                        if (convertNormal && attribute.name == NormalAttributeName)
+                        {
+                            Vector3 n = Units.ToUnityDirection((Vector3)value);
+                            value = n;
+                        }
+                        
                         field.SetValue(point, value);
+                    }
                 }
-                
+
                 points.Add(point);
             }
-            
+
             return points;
         }
 
