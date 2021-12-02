@@ -44,5 +44,15 @@ namespace Houdini.GeoImportExport
         {
             return new Vector3(-unityDirection.x, unityDirection.y, unityDirection.z).normalized;
         }
+        
+        public static Quaternion ToUnityRotation(Quaternion houdiniRotation)
+        {
+            return new Quaternion(houdiniRotation.x, -houdiniRotation.y, -houdiniRotation.z, houdiniRotation.w);
+        }
+
+        public static Quaternion ToHoudiniRotation(Quaternion unityRotation)
+        {
+            return new Quaternion(unityRotation.x, -unityRotation.y, -unityRotation.z, unityRotation.w);
+        }
     }
 }
