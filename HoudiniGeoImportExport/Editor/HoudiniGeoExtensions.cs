@@ -549,10 +549,13 @@ namespace Houdini.GeoImportExport
             houdiniGeo.pointCount = pointCollection.Count;
 
             // First create the attributes.
-            Dictionary<FieldInfo, HoudiniGeoAttribute> attributes = new Dictionary<FieldInfo, HoudiniGeoAttribute>();
+            Dictionary<FieldInfo, HoudiniGeoAttribute> fieldToPointAttribute =
+                new Dictionary<FieldInfo, HoudiniGeoAttribute>();
+            Dictionary<FieldInfo, HoudiniGeoAttribute> fieldToDetailAttribute = new Dictionary<FieldInfo, HoudiniGeoAttribute>();
             Type pointType = typeof(PointType);
             FieldInfo[] fieldCandidates =
-                pointType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                pointType.GetFields(
+                    BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             foreach (FieldInfo field in fieldCandidates)
             {
                 // Ignore private fields that aren't tagged with SerializeField. 
@@ -563,12 +566,20 @@ namespace Houdini.GeoImportExport
                 if (!wasValidAttributeType)
                     continue;
 
-                attribute.owner = HoudiniGeoAttributeOwner.Point;
-                attributes.Add(field, attribute);
+                if (field.IsStatic)
+                {
+                    attribute.owner = HoudiniGeoAttributeOwner.Detail;
+                    fieldToDetailAttribute.Add(field, attribute);
+                }
+                else
+                {
+                    attribute.owner = HoudiniGeoAttributeOwner.Point;
+                    fieldToPointAttribute.Add(field, attribute);
+                }
             }
 
-            // Then populate the attributes with values.
-            foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in attributes)
+            // Then populate the point attributes with values.
+            foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in fieldToPointAttribute)
             {
                 List<float> floatValues = new List<float>();
                 List<int> intValues = new List<int>();
@@ -577,50 +588,68 @@ namespace Houdini.GeoImportExport
                 foreach (PointType point in pointCollection)
                 {
                     object value = kvp.Key.GetValue(point);
-                    
-                    // If specified, automatically translate the position to Houdini's format.
-                    if (translateCoordinateSystems && kvp.Key.Name == PositionAttributeName)
-                    {
-                        Vector3 p = Units.ToHoudiniPosition((Vector3)value);
-                        value = p;
-                    }
-                    
-                    // If specified, automatically translate the direction to Houdini's format.
-                    else if (translateCoordinateSystems && (kvp.Key.Name == NormalAttributeName ||
-                             kvp.Key.Name == UpAttributeName))
-                    {
-                        Vector3 n = Units.ToHoudiniDirection((Vector3)value);
-                        value = n;
-                    }
 
-                    // If specified, automatically translate the rotation to Houdini's format.
-                    else if (translateCoordinateSystems && kvp.Key.Name == RotationAttributeName)
-                    {
-                        Quaternion orient = Units.ToHoudiniRotation((Quaternion)value);
-                        value = orient;
-                    }
-                    
-                    AddValueAsTuples(value, floatValues, intValues, stringValues);
+                    AddValueAsTuples(
+                        kvp.Key.Name, value, floatValues, intValues, stringValues, translateCoordinateSystems);
                 }
 
                 kvp.Value.floatValues = floatValues.ToArray();
                 kvp.Value.intValues = intValues.ToArray();
                 kvp.Value.stringValues = stringValues.ToArray();
             }
-
-            // Then add the attributes to the geometry.
-            houdiniGeo.attributes = new HoudiniGeoAttribute[attributes.Count];
-            int index = 0;
-            foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in attributes)
+            
+            // Now populate the detail attributes with values.
+            foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in fieldToDetailAttribute)
             {
-                houdiniGeo.attributes[index] = kvp.Value;
-                index++;
+                object value = kvp.Key.GetValue(null);
+                
+                List<float> floatValues = new List<float>();
+                List<int> intValues = new List<int>();
+                List<string> stringValues = new List<string>();
+
+                AddValueAsTuples(kvp.Key.Name, value, floatValues, intValues, stringValues, translateCoordinateSystems);
+
+                kvp.Value.floatValues = floatValues.ToArray();
+                kvp.Value.intValues = intValues.ToArray();
+                kvp.Value.stringValues = stringValues.ToArray();
+            }
+
+            // Then add the point & detail attributes to the geometry.
+            foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in fieldToPointAttribute)
+            {
+                houdiniGeo.attributes.Add(kvp.Value);
+            }
+            foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in fieldToDetailAttribute)
+            {
+                houdiniGeo.attributes.Add(kvp.Value);
             }
         }
 
         private static void AddValueAsTuples(
-            object value, List<float> floatValues, List<int> intValues, List<string> stringValues)
+            string name, object value, List<float> floatValues, List<int> intValues, List<string> stringValues,
+            bool translateCoordinateSystems)
         {
+            // If specified, automatically translate the position to Houdini's format.
+            if (translateCoordinateSystems && name == PositionAttributeName)
+            {
+                Vector3 p = Units.ToHoudiniPosition((Vector3)value);
+                value = p;
+            }
+                    
+            // If specified, automatically translate the direction to Houdini's format.
+            else if (translateCoordinateSystems && (name == NormalAttributeName || name == UpAttributeName))
+            {
+                Vector3 n = Units.ToHoudiniDirection((Vector3)value);
+                value = n;
+            }
+
+            // If specified, automatically translate the rotation to Houdini's format.
+            else if (translateCoordinateSystems && name == RotationAttributeName)
+            {
+                Quaternion orient = Units.ToHoudiniRotation((Quaternion)value);
+                value = orient;
+            }
+            
             switch (value)
             {
                 case bool b:
