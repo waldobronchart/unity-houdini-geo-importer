@@ -197,7 +197,7 @@ namespace Houdini.GeoImportExport
                 }
             }
 
-            geo.attributes = geoAttributes.ToArray();
+            geo.attributes.AddRange(geoAttributes);
         }
 
         private static HoudiniGeoAttribute ParseSingleAttribute(JToken attrToken, HoudiniGeoAttributeOwner owner)

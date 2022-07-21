@@ -183,7 +183,7 @@ namespace Houdini.GeoImportExport
 
         public int[] pointRefs;
             
-        public HoudiniGeoAttribute[] attributes;
+        public List<HoudiniGeoAttribute> attributes;
 
         public PolyPrimitive[] polyPrimitives;
         public BezierCurvePrimitive[] bezierCurvePrimitives;
@@ -209,7 +209,7 @@ namespace Houdini.GeoImportExport
                 hostname = Environment.MachineName,
             };
             
-            geo.attributes = new HoudiniGeoAttribute[0];
+            geo.attributes = new List<HoudiniGeoAttribute>();
             
             geo.pointRefs = new int[0];
             
