@@ -623,6 +623,9 @@ namespace Houdini.GeoImportExport
         {
             switch (value)
             {
+                case bool b:
+                    intValues.Add(b ? 1 : 0);
+                    break;
                 case float f:
                     floatValues.Add(f);
                     break;
@@ -675,7 +678,9 @@ namespace Houdini.GeoImportExport
 
             Type type = fieldInfo.FieldType;
             
-            if (type == typeof(float))
+            if (type == typeof(bool))
+                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 1};
+            else if (type == typeof(float))
                 attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 1};
             else if (type == typeof(int))
                 attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 1};
@@ -760,6 +765,8 @@ namespace Houdini.GeoImportExport
 
         private static object GetAttributeValue(Type type, HoudiniGeoAttribute attribute, int index)
         {
+            if (type == typeof(bool))
+                return attribute.intValues[index] == 1;
             if (type == typeof(float))
                 return attribute.floatValues[index];
             if (type == typeof(int))
