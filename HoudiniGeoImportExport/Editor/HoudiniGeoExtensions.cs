@@ -22,6 +22,11 @@ namespace Houdini.GeoImportExport
 {
     public static class HoudiniGeoExtensions
     {
+        private const string PositionAttributeName = "P";
+        private const string NormalAttributeName = "N";
+        private const string UpAttributeName = "up";
+        private const string RotationAttributeName = "orient";
+        
         internal static void ImportAllMeshes(this HoudiniGeo geo)
         {
             string geoAssetPath = AssetDatabase.GetAssetPath(geo);
@@ -538,7 +543,7 @@ namespace Houdini.GeoImportExport
 
         public static void SetPoints<PointType>(
             this HoudiniGeo houdiniGeo, PointCollection<PointType> pointCollection,
-            bool convertPosition = true)
+            bool translateCoordinateSystems = true)
             where PointType : PointData
         {
             houdiniGeo.pointCount = pointCollection.Count;
@@ -574,11 +579,27 @@ namespace Houdini.GeoImportExport
                     object value = kvp.Key.GetValue(point);
                     
                     // If specified, automatically translate the position to Houdini's format.
-                    if (convertPosition && kvp.Key.Name == "P")
+                    if (translateCoordinateSystems && kvp.Key.Name == PositionAttributeName)
                     {
                         Vector3 p = Units.ToHoudiniPosition((Vector3)value);
                         value = p;
                     }
+                    
+                    // If specified, automatically translate the direction to Houdini's format.
+                    else if (translateCoordinateSystems && (kvp.Key.Name == NormalAttributeName ||
+                             kvp.Key.Name == UpAttributeName))
+                    {
+                        Vector3 n = Units.ToHoudiniDirection((Vector3)value);
+                        value = n;
+                    }
+
+                    // If specified, automatically translate the rotation to Houdini's format.
+                    else if (translateCoordinateSystems && kvp.Key.Name == RotationAttributeName)
+                    {
+                        Quaternion orient = Units.ToHoudiniRotation((Quaternion)value);
+                        value = orient;
+                    }
+                    
                     AddValueAsTuples(value, floatValues, intValues, stringValues);
                 }
 
@@ -634,6 +655,12 @@ namespace Houdini.GeoImportExport
                     floatValues.Add(vector3Int.x);
                     floatValues.Add(vector3Int.y);
                     break;
+                case Quaternion quaternion:
+                    floatValues.Add(quaternion.x);
+                    floatValues.Add(quaternion.y);
+                    floatValues.Add(quaternion.z);
+                    floatValues.Add(quaternion.w);
+                    break;
                 case Color color:
                     floatValues.Add(color.r);
                     floatValues.Add(color.g);
@@ -664,6 +691,8 @@ namespace Houdini.GeoImportExport
                 attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 2};
             else if (type == typeof(Vector3Int))
                 attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 3};
+            else if (type == typeof(Quaternion))
+                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 4};
             else if (type == typeof(Color))
                 attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 3};
 
@@ -674,7 +703,8 @@ namespace Houdini.GeoImportExport
             return true;
         }
 
-        public static PointCollection<PointType> GetPoints<PointType>(this HoudiniGeo houdiniGeo)
+        public static PointCollection<PointType> GetPoints<PointType>(
+            this HoudiniGeo houdiniGeo, bool translateCoordinateSystems = true)
             where PointType : PointData
         {
             PointCollection<PointType> points = new PointCollection<PointType>();
@@ -687,15 +717,44 @@ namespace Houdini.GeoImportExport
                 foreach (HoudiniGeoAttribute attribute in houdiniGeo.attributes)
                 {
                     FieldInfo field = pointType.GetField(attribute.name);
+
+                    // The point doesn't necessarily need to support every attribute that exists in the file.
+                    if (field == null)
+                        continue;
+
                     object value = GetAttributeValue(field.FieldType, attribute, i);
-                    
+
                     if (value != null)
+                    {
+                        // If specified, automatically translate the position to Unity's format.
+                        if (translateCoordinateSystems && attribute.name == PositionAttributeName)
+                        {
+                            Vector3 p = Units.ToUnityPosition((Vector3)value);
+                            value = p;
+                        }
+                        
+                        // If specified, automatically translate the direction to Unity's format.
+                        else if (translateCoordinateSystems &&
+                                 (attribute.name == NormalAttributeName || attribute.name == UpAttributeName))
+                        {
+                            Vector3 n = Units.ToUnityDirection((Vector3)value);
+                            value = n;
+                        }
+
+                        // If specified, automatically translate the rotation to Unity's format.
+                        else if (translateCoordinateSystems && attribute.name == RotationAttributeName)
+                        {
+                            Quaternion orient = Units.ToUnityRotation((Quaternion)value);
+                            value = orient;
+                        }
+                        
                         field.SetValue(point, value);
+                    }
                 }
-                
+
                 points.Add(point);
             }
-            
+
             return points;
         }
 
@@ -717,6 +776,8 @@ namespace Houdini.GeoImportExport
                 return new Vector2Int(attribute.intValues[index * 2], attribute.intValues[index * 2 + 1]);
             if (type == typeof(Vector3Int))
                 return new Vector3Int(attribute.intValues[index * 3], attribute.intValues[index * 3 + 1], attribute.intValues[index * 3 + 2]);
+            if (type == typeof(Quaternion))
+                return new Quaternion(attribute.floatValues[index * 4], attribute.floatValues[index * 4 + 1], attribute.floatValues[index * 4 + 2], attribute.floatValues[index * 4 + 3]);
             if (type == typeof(Color))
                 return new Color(attribute.floatValues[index * 3], attribute.floatValues[index * 3 + 1], attribute.floatValues[index * 3 + 2]);
             

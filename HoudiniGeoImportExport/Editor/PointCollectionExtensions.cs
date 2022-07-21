@@ -20,7 +20,7 @@ namespace Houdini.GeoImportExport
     public static class PointCollectionExtensions
     {
         public static void ExportToGeoFile<PointType>(
-            this PointCollection<PointType> pointCollection, string path, bool convertPosition = true)
+            this PointCollection<PointType> pointCollection, string path, bool translateCoordinateSystems = true)
             where PointType : PointData
         {
             // Check if the filename is valid.
@@ -44,7 +44,7 @@ namespace Houdini.GeoImportExport
 
             HoudiniGeo houdiniGeo = HoudiniGeo.Create();
 
-            houdiniGeo.SetPoints(pointCollection, convertPosition);
+            houdiniGeo.SetPoints(pointCollection, translateCoordinateSystems);
 
             Debug.Log($"Export GEO file '{path}'");
             houdiniGeo.Export(path);
