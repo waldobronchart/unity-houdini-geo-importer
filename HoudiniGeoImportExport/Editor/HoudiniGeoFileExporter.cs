@@ -10,6 +10,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using UnityEditor;
 
@@ -254,6 +255,10 @@ namespace Houdini.GeoImportExport
         private static T[][] BreakIntoTuples<T>(T[] sequential, int tupleSize)
         {
             List<T[]> tuples = new List<T[]>();
+
+            // Need to early out here because the for loop below never completes in this case. 
+            if (sequential.Length == 0)
+                return tuples.ToArray();
             
             // If the tuple size is 1, just treat the whole data as one big tuple.
             if (tupleSize == 1)
