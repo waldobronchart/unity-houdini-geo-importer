@@ -1,0 +1,18 @@
+{
+    "name": "HoudiniGeoImportExport.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:97bdb2cf856006444afb3a2635248988"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
