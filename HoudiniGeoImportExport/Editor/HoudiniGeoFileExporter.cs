@@ -85,6 +85,8 @@ namespace Houdini.GeoImportExport
 
             AddPrimitivesToDictionary(dictionary);
             
+            AddPointGroupsToDictionary(dictionary);
+            
             writer.WriteValue(dictionary);
         }
 
@@ -227,6 +229,83 @@ namespace Houdini.GeoImportExport
             }
 
             attributeDictionaries.Add(body);
+        }
+        
+        private static void AddPointGroupsToDictionary(Dictionary<string, object> dictionary)
+        {
+            // Add the attributes dictionary itself.
+            List<object> pointGroupsList = new List<object>();
+            
+            // Now for every group add a list with a header and a body dictionary.
+            foreach (PointGroup pointGroup in data.pointGroups)
+            {
+                List<object> pointGroupDictionaries = new List<object>();
+                Dictionary<string, object> headerDictionary = new Dictionary<string, object>();
+                headerDictionary.Add("name", pointGroup.name);
+                pointGroupDictionaries.Add(headerDictionary);
+                
+                Dictionary<string, object> bodyDictionary = new Dictionary<string, object>();
+                bodyDictionary.Add("selection", GetPointGroupSelectionDictionary(pointGroup));
+                pointGroupDictionaries.Add(bodyDictionary);
+                
+                pointGroupsList.Add(pointGroupDictionaries);
+            }
+            
+            dictionary.Add("pointgroups", pointGroupsList);
+        }
+        
+        private static Dictionary<string, object> GetPointGroupSelectionDictionary(PointGroup pointGroup)
+        {
+            // Add the attributes dictionary itself.
+            Dictionary<string, object> selectionDictionary = new Dictionary<string, object>();
+            
+            Dictionary<string, object> unordered = new Dictionary<string, object>();
+
+            // If there's fewer than 17 we can store it in a binary array, which is not super efficient but simple.
+            if (data.pointCount < 17)
+            {
+                bool[] binaryValues = new bool[data.pointCount];
+                for (int i = 0; i < data.pointCount; i++)
+                {
+                    binaryValues[i] = pointGroup.ids.Contains(i);
+                }
+                unordered.Add("i8", binaryValues);
+            }
+            else
+            {
+                // Make a "boolean Run Length Encoded" bit-array. This is a list of how many times a certain boolean
+                // is to be added. Much more efficient this way.
+                List<object> runs = new List<object>();
+                int currentRunLength = 0;
+                bool currentRunValue = pointGroup.ids.Contains(0);
+                for (int i = 0; i < data.pointCount; i++)
+                {
+                    bool currentValue = pointGroup.ids.Contains(i);
+
+                    // Extend the current run!
+                    if (currentValue == currentRunValue)
+                    {
+                        currentRunLength++;
+                        
+                        // Normally we continue the run, unless this is the final entry then we must end it.
+                        if (i < data.pointCount - 1)
+                            continue;
+                    }
+
+                    // The current run ended.
+                    runs.Add(currentRunLength);
+                    runs.Add(currentRunValue);
+                    
+                    // Start a new run.
+                    currentRunLength = 1;
+                    currentRunValue = currentValue;
+                }
+                unordered.Add("boolRLE", runs);
+            }
+            
+            selectionDictionary.Add("unordered", unordered);
+
+            return selectionDictionary;
         }
 
         private static void BreakIntoUniqueStringsAndIndices(string[] duplicated, out string[] unique, out int[] indices)

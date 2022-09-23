@@ -29,6 +29,7 @@ namespace Houdini.GeoImportExport
         public Bounds bounds;
         public string primcount_summary;
         public string attribute_summary;
+        public string group_summary;
 
         public HoudiniGeoFileInfo Copy()
         {
@@ -132,22 +133,44 @@ namespace Houdini.GeoImportExport
     {
         public string name;
         public HoudiniGeoGroupType type;
+
+        public HoudiniGeoGroup(string name, HoudiniGeoGroupType type)
+        {
+            this.name = name;
+            this.type = type;
+        }
     }
 
     public class PrimitiveGroup : HoudiniGeoGroup
     {
-        public int[] ids;
+        public List<int> ids;
+
+        public PrimitiveGroup(string name, List<int> ids) : base(name, HoudiniGeoGroupType.Primitives)
+        {
+            this.ids = ids;
+        }
     }
     
     public class PointGroup : HoudiniGeoGroup
     {
-        public int[] ids;
-        public int[] vertIds;
+        public List<int> ids;
+        public List<int> vertIds;
+
+        public PointGroup(string name, List<int> ids, List<int> vertIds) : base(name, HoudiniGeoGroupType.Points)
+        {
+            this.ids = ids;
+            this.vertIds = vertIds;
+        }
     }
     
     public class EdgeGroup : HoudiniGeoGroup
     {
-        public int[][] pointPairs;
+        public List<KeyValuePair<int, int>> pointPairs;
+
+        public EdgeGroup(string name, List<KeyValuePair<int, int>> pointPairs) : base(name, HoudiniGeoGroupType.Edges)
+        {
+            this.pointPairs = pointPairs;
+        }
     }
 
     [Serializable]
@@ -189,9 +212,9 @@ namespace Houdini.GeoImportExport
         public BezierCurvePrimitive[] bezierCurvePrimitives;
         public NURBCurvePrimitive[] nurbCurvePrimitives;
 
-        public PrimitiveGroup[] primitiveGroups;
-        public PointGroup[] pointGroups;
-        public EdgeGroup[] edgeGroups;
+        public List<PrimitiveGroup> primitiveGroups;
+        public List<PointGroup> pointGroups;
+        public List<EdgeGroup> edgeGroups;
 
         [HideInInspector] public string exportPath;
         
@@ -217,9 +240,9 @@ namespace Houdini.GeoImportExport
             geo.bezierCurvePrimitives = new BezierCurvePrimitive[0];
             geo.nurbCurvePrimitives = new NURBCurvePrimitive[0];
             
-            geo.primitiveGroups = new PrimitiveGroup[0];
-            geo.pointGroups = new PointGroup[0];
-            geo.edgeGroups = new EdgeGroup[0];
+            geo.primitiveGroups = new List<PrimitiveGroup>();
+            geo.pointGroups = new List<PointGroup>();
+            geo.edgeGroups = new List<EdgeGroup>();
 
             return geo;
         }

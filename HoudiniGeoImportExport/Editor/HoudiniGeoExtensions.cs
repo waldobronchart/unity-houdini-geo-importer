@@ -27,6 +27,8 @@ namespace Houdini.GeoImportExport
         private const string UpAttributeName = "up";
         private const string RotationAttributeName = "orient";
         
+        private const string GroupsFieldName = "groups";
+        
         internal static void ImportAllMeshes(this HoudiniGeo geo)
         {
             string geoAssetPath = AssetDatabase.GetAssetPath(geo);
@@ -556,11 +558,18 @@ namespace Houdini.GeoImportExport
             FieldInfo[] fieldCandidates =
                 pointType.GetFields(
                     BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            FieldInfo groupsField = null;
             foreach (FieldInfo field in fieldCandidates)
             {
                 // Ignore private fields that aren't tagged with SerializeField. 
                 if (field.IsPrivate && field.GetCustomAttribute<SerializeField>() == null)
                     continue;
+
+                if (field.Name == GroupsFieldName)
+                {
+                    groupsField = field;
+                    continue;
+                }
 
                 bool wasValidAttributeType = TryCreateAttribute(field, out HoudiniGeoAttribute attribute);
                 if (!wasValidAttributeType)
@@ -622,6 +631,49 @@ namespace Houdini.GeoImportExport
             foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in fieldToDetailAttribute)
             {
                 houdiniGeo.attributes.Add(kvp.Value);
+            }
+            
+            // Figure out which groups this point has based on the enum type.
+            if (groupsField != null)
+            {
+                Type groupsEnumType = groupsField.FieldType;
+                if (!typeof(Enum).IsAssignableFrom(groupsEnumType))
+                {
+                    Debug.LogError($"Fields named 'groups' are special and are used to set groups in the .GEO file. " +
+                                   $"It must be of an enum type with each flag representing its group participation.");
+                    return;
+                }
+
+                // Now create a group for every flag in the enum.
+                string[] enumNames = Enum.GetNames(groupsEnumType);
+                Array enumValues = Enum.GetValues(groupsEnumType);
+                for (int i = 0; i < enumNames.Length; i++)
+                {
+                    string groupName = enumNames[i];
+                    int groupValue = (int)enumValues.GetValue(i);
+                    
+                    if (groupValue <= 0)
+                        continue;
+
+                    // Create the point group.
+                    List<int> pointIds = new List<int>();
+                    List<int> vertexIds = new List<int>();
+                    PointGroup group = new PointGroup(groupName, pointIds, vertexIds);
+                    
+                    // Populate the group with points.
+                    for (int pointId = 0; pointId < pointCollection.Count; pointId++)
+                    {
+                        PointType point = pointCollection[pointId];
+                        int pointGroupFlags = (int)groupsField.GetValue(point);
+                        
+                        // Check that the point has the flag for this group.
+                        if ((pointGroupFlags & groupValue) == groupValue)
+                            pointIds.Add(pointId);
+                    }
+
+                    // Now add it to the geometry.
+                    houdiniGeo.pointGroups.Add(group);
+                }
             }
         }
 
