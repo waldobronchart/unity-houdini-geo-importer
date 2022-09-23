@@ -29,6 +29,7 @@ namespace Houdini.GeoImportExport
         public Bounds bounds;
         public string primcount_summary;
         public string attribute_summary;
+        public string group_summary;
 
         public HoudiniGeoFileInfo Copy()
         {
