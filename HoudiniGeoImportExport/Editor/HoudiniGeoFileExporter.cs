@@ -278,6 +278,13 @@ namespace Houdini.GeoImportExport
                 List<object> runs = new List<object>();
                 int currentRunLength = 0;
                 bool currentRunValue = pointGroup.ids.Contains(0);
+
+                void EndCurrentRun()
+                {
+                    runs.Add(currentRunLength);
+                    runs.Add(currentRunValue);
+                }
+                
                 for (int i = 0; i < data.pointCount; i++)
                 {
                     bool currentValue = pointGroup.ids.Contains(i);
@@ -291,15 +298,17 @@ namespace Houdini.GeoImportExport
                         if (i < data.pointCount - 1)
                             continue;
                     }
-
-                    // The current run ended.
-                    runs.Add(currentRunLength);
-                    runs.Add(currentRunValue);
+                    
+                    EndCurrentRun();
                     
                     // Start a new run.
                     currentRunLength = 1;
                     currentRunValue = currentValue;
                 }
+
+                if (currentRunLength > 0)
+                    EndCurrentRun();
+                
                 unordered.Add("boolRLE", runs);
             }
             
