@@ -218,6 +218,9 @@ namespace Houdini.GeoImportExport
 
         [HideInInspector] public string exportPath;
         
+        public delegate void GeoFileImportedHandler(HoudiniGeo houdiniGeo);
+        public static event GeoFileImportedHandler GeoFileImportedEvent;
+        
         public static HoudiniGeo Create()
         {
             HoudiniGeo geo = CreateInstance<HoudiniGeo>();
@@ -233,6 +236,11 @@ namespace Houdini.GeoImportExport
             };
 
             return geo;
+        }
+
+        public static void DispatchGeoFileImportedEvent(HoudiniGeo houdiniGeo)
+        {
+            GeoFileImportedEvent?.Invoke(houdiniGeo);
         }
     }
 }

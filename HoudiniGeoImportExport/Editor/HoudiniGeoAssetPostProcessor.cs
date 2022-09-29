@@ -47,6 +47,8 @@ namespace Houdini.GeoImportExport
                 houdiniGeo.ImportAllMeshes();
 
                 EditorUtility.SetDirty(houdiniGeo);
+                
+                HoudiniGeo.DispatchGeoFileImportedEvent(houdiniGeo);
             }
 
             if (houdiniGeosImported.Length > 0)
