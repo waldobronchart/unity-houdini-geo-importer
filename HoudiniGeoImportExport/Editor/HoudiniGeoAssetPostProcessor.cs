@@ -41,6 +41,11 @@ namespace Houdini.GeoImportExport
                     houdiniGeo = ScriptableObject.CreateInstance<HoudiniGeo>();
                     AssetDatabase.CreateAsset(houdiniGeo, geoOutputPath);
                 }
+                else
+                {
+                    // Make sure that it's empty so it can receive the new info.
+                    houdiniGeo.Clear();
+                }
 
                 HoudiniGeoFileParser.ParseInto(assetPath, houdiniGeo);
 

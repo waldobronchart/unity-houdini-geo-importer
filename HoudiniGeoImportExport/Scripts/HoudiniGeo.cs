@@ -238,6 +238,20 @@ namespace Houdini.GeoImportExport
             return geo;
         }
 
+        public void Clear()
+        {
+            pointCount = 0;
+            pointRefs = new int[0];
+            
+            attributes.Clear();
+            polyPrimitives = new PolyPrimitive[0];
+            bezierCurvePrimitives = new BezierCurvePrimitive[0];
+            nurbCurvePrimitives = new NURBCurvePrimitive[0];
+            primitiveGroups.Clear();
+            pointGroups.Clear();
+            edgeGroups.Clear();
+        }
+
         public static void DispatchGeoFileImportedEvent(HoudiniGeo houdiniGeo)
         {
             GeoFileImportedEvent?.Invoke(houdiniGeo);
