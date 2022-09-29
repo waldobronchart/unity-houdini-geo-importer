@@ -798,7 +798,15 @@ namespace Houdini.GeoImportExport
 
             for (int i = 0; i < houdiniGeo.pointCount; i++)
             {
-                PointType point = (PointType)FormatterServices.GetUninitializedObject(typeof(PointType));
+                bool hasDefaultConstructor = typeof(PointType).GetConstructor(Type.EmptyTypes) != null;
+                
+                // If the point type has a default constructor we can use that to create an instance and call the field
+                // initializers. If not, that's fine too but then we're gonna create an uninitialized instance.
+                PointType point;
+                if (hasDefaultConstructor)
+                    point = (PointType)Activator.CreateInstance(typeof(PointType));
+                else
+                    point = (PointType)FormatterServices.GetUninitializedObject(typeof(PointType));
 
                 foreach (HoudiniGeoAttribute attribute in houdiniGeo.attributes)
                 {
