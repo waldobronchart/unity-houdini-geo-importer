@@ -204,17 +204,17 @@ namespace Houdini.GeoImportExport
         public int primCount;
         public HoudiniGeoFileInfo fileInfo;
 
-        public int[] pointRefs;
+        public int[] pointRefs = new int[0];
             
-        public List<HoudiniGeoAttribute> attributes;
+        public List<HoudiniGeoAttribute> attributes = new List<HoudiniGeoAttribute>();
 
-        public PolyPrimitive[] polyPrimitives;
-        public BezierCurvePrimitive[] bezierCurvePrimitives;
-        public NURBCurvePrimitive[] nurbCurvePrimitives;
+        public PolyPrimitive[] polyPrimitives = new PolyPrimitive[0];
+        public BezierCurvePrimitive[] bezierCurvePrimitives = new BezierCurvePrimitive[0];
+        public NURBCurvePrimitive[] nurbCurvePrimitives = new NURBCurvePrimitive[0];
 
-        public List<PrimitiveGroup> primitiveGroups;
-        public List<PointGroup> pointGroups;
-        public List<EdgeGroup> edgeGroups;
+        public List<PrimitiveGroup> primitiveGroups = new List<PrimitiveGroup>();
+        public List<PointGroup> pointGroups = new List<PointGroup>();
+        public List<EdgeGroup> edgeGroups = new List<EdgeGroup>();
 
         [HideInInspector] public string exportPath;
         
@@ -231,18 +231,6 @@ namespace Houdini.GeoImportExport
                 artist = Environment.UserName,
                 hostname = Environment.MachineName,
             };
-            
-            geo.attributes = new List<HoudiniGeoAttribute>();
-            
-            geo.pointRefs = new int[0];
-            
-            geo.polyPrimitives = new PolyPrimitive[0];
-            geo.bezierCurvePrimitives = new BezierCurvePrimitive[0];
-            geo.nurbCurvePrimitives = new NURBCurvePrimitive[0];
-            
-            geo.primitiveGroups = new List<PrimitiveGroup>();
-            geo.pointGroups = new List<PointGroup>();
-            geo.edgeGroups = new List<EdgeGroup>();
 
             return geo;
         }
