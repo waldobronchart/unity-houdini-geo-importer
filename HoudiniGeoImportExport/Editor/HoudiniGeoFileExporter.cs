@@ -385,8 +385,35 @@ namespace Houdini.GeoImportExport
         
         private static void AddPrimitivesToDictionary(Dictionary<string, object> dictionary)
         {
-            // TODO: Add primitives support. I'll be honest: I'm really only interested in point data myself.
-            dictionary.Add("primitives", new object[] {});
+            List<object> primitivesList = new List<object>();
+            dictionary.Add("primitives", primitivesList);
+            
+            foreach (NURBCurvePrimitive nurbCurvePrimitive in data.nurbCurvePrimitives)
+            {
+                // Each attribute has a list with two dictionaries: a header and a body.
+                List<object> primitiveDictionaries = new List<object>();
+                
+                // First a header that just specifies the type of curve.
+                Dictionary<string, object> headerDictionary = new Dictionary<string, object>();
+                headerDictionary.Add("type", nurbCurvePrimitive.type);
+            
+                // Now a body that specifies the properties of the curve.
+                Dictionary<string, object> bodyDictionary = new Dictionary<string, object>();
+                bodyDictionary.Add("vertex", nurbCurvePrimitive.indices);
+                bodyDictionary.Add("closed", false);
+            
+                Dictionary<string, object> basisDictionary = new Dictionary<string, object>();
+                bodyDictionary.Add("basis", basisDictionary);
+                basisDictionary.Add("type", "NURBS");
+                basisDictionary.Add("order", nurbCurvePrimitive.order);
+                basisDictionary.Add("endinterpolation", nurbCurvePrimitive.endInterpolation);
+                basisDictionary.Add("knots", nurbCurvePrimitive.knots);
+            
+                primitiveDictionaries.Add(headerDictionary);
+                primitiveDictionaries.Add(bodyDictionary);
+                
+                primitivesList.Add(primitiveDictionaries);
+            }
         }
 
         private static void SaveDataToFile()

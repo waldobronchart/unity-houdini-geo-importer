@@ -662,7 +662,61 @@ namespace Houdini.GeoImportExport
             where SplineType : SplineData<PointType>
             where PointType : PointData
         {
-            // TODO: Add the points from every spline, and also add primitives for every spline.
+            foreach (SplineType spline in splineCollection)
+            {
+                // Firstly we can just add all of the points. There is nothing special about these points, it's like
+                // any ordinary point collection.
+                houdiniGeo.AddPoints(spline.points, translateCoordinateSystems);
+
+                // Primitives are comprised of vertices, not points. So we need to add a vertex for every point.
+                // Why do we do this in reverse? The splines I exported from Maya do it in reverse, so I'm doing it too
+                // for consistency. You'll get the spline served to you the way it would be if it came from Maya instead.
+                for (int i = spline.points.Count - 1; i >= 0; i--)
+                {
+                    // Knowing that we just added points, we can grab them from the end of the list.
+                    int pointIndex = houdiniGeo.pointCount - spline.points.Count + i;
+                    houdiniGeo.pointRefs.Add(pointIndex);
+                    houdiniGeo.vertexCount++;
+                }
+                
+                NURBCurvePrimitive nurbCurvePrimitive = new NURBCurvePrimitive();
+                for (int i = 0; i < spline.points.Count; i++)
+                {
+                    // Knowing that we just added a certain number of vertices, we can calculate which ones they were.
+                    int vertexIndex = houdiniGeo.vertexCount - spline.points.Count + i;
+                    nurbCurvePrimitive.indices.Add(vertexIndex);
+                }
+
+                // NOTE: This does not support EVERY kind of spline that GEO files can handle, but it supports open
+                // bezier curves which is the kind that's most useful to export from Unity.
+                // TODO: Support closed bezier curves as well?
+                nurbCurvePrimitive.order = 4;
+                nurbCurvePrimitive.endInterpolation = true;
+                
+                // I'm not so well-versed in NURBS so I'm winging it a little bit here based on a wikipedia article
+                // and some reference splines that I cooked up in Maya. If I made a mistake feel free to fix it.
+                // Here's my sources:
+                // https://en.wikipedia.org/wiki/Non-uniform_rational_B-spline#:~:text=The%20knot%20vector%20is%20a,control%20points%20plus%20curve%20order).
+                // Also go watch this, it's really good: https://www.youtube.com/watch?v=jvPPXbo87ds
+                int vertexCount = spline.points.Count;
+                int knotCount = 2 + (vertexCount - nurbCurvePrimitive.order) / (nurbCurvePrimitive.order - 1);
+                for (int i = 0; i < knotCount; i++)
+                {
+                    int multiplicity;
+                    if (i == 0 || i == knotCount - 1)
+                        multiplicity = nurbCurvePrimitive.order;
+                    else
+                        multiplicity = nurbCurvePrimitive.order - 1;
+                    
+                    for (int j = 0; j < multiplicity; j++)
+                    {
+                        nurbCurvePrimitive.knots.Add(i);
+                    }
+                }
+                
+                houdiniGeo.nurbCurvePrimitives.Add(nurbCurvePrimitive);
+                houdiniGeo.primCount++;
+            }
         }
 
         private static bool GetAttributeTypeAndSize(Type valueType, out HoudiniGeoAttributeType type, out int tupleSize)
