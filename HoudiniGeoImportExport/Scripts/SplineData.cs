@@ -20,13 +20,13 @@ namespace Houdini.GeoImportExport
     public class SplineData<PointType> : SplineDataBase
         where PointType : PointData
     {
-        public List<PointType> points = new List<PointType>();
+        public PointCollection<PointType> points = new PointCollection<PointType>();
 
         public SplineData()
         {
         }
         
-        public SplineData(List<PointType> points)
+        public SplineData(PointCollection<PointType> points)
         {
             this.points.AddRange(points);
         }
