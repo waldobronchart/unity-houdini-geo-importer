@@ -687,9 +687,8 @@ namespace Houdini.GeoImportExport
                     nurbCurvePrimitive.indices.Add(vertexIndex);
                 }
 
-                // NOTE: This does not support EVERY kind of spline that GEO files can handle, but it supports open
+                // NOTE: This does not support EVERY kind of spline that GEO files can handle, but it supports
                 // bezier curves which is the kind that's most useful to export from Unity.
-                // TODO: Support closed bezier curves as well?
                 nurbCurvePrimitive.order = 4;
                 nurbCurvePrimitive.endInterpolation = true;
                 

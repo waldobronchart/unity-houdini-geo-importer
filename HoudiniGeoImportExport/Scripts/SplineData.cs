@@ -22,11 +22,13 @@ namespace Houdini.GeoImportExport
     {
         public PointCollection<PointType> points = new PointCollection<PointType>();
 
+        public bool isClosed;
+
         public SplineData()
         {
         }
         
-        public SplineData(PointCollection<PointType> points)
+        public SplineData(PointCollection<PointType> points, bool isClosed = false)
         {
             this.points.AddRange(points);
         }
