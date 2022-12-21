@@ -572,20 +572,18 @@ namespace Houdini.GeoImportExport
                     continue;
                 }
 
-                bool wasValidAttributeType = TryCreateAttribute(field, out HoudiniGeoAttribute attribute);
-                if (!wasValidAttributeType)
+                HoudiniGeoAttributeOwner owner =
+                    field.IsStatic ? HoudiniGeoAttributeOwner.Detail : HoudiniGeoAttributeOwner.Point;
+
+                bool hasValidAttribute = TryGetOrCreateAttribute(
+                    houdiniGeo, field, owner, out HoudiniGeoAttribute attribute);
+                if (!hasValidAttribute)
                     continue;
 
                 if (field.IsStatic)
-                {
-                    attribute.owner = HoudiniGeoAttributeOwner.Detail;
                     fieldToDetailAttribute.Add(field, attribute);
-                }
                 else
-                {
-                    attribute.owner = HoudiniGeoAttributeOwner.Point;
                     fieldToPointAttribute.Add(field, attribute);
-                }
             }
 
             // Then populate the point attributes with values.
@@ -624,16 +622,6 @@ namespace Houdini.GeoImportExport
                 kvp.Value.stringValues.AddRange(stringValues);
             }
 
-            // Then add the point & detail attributes to the geometry.
-            foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in fieldToPointAttribute)
-            {
-                houdiniGeo.attributes.Add(kvp.Value);
-            }
-            foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in fieldToDetailAttribute)
-            {
-                houdiniGeo.attributes.Add(kvp.Value);
-            }
-            
             // Figure out which groups this point has based on the enum type.
             if (groupsField != null)
             {
@@ -754,40 +742,117 @@ namespace Houdini.GeoImportExport
             }
         }
 
-        private static bool TryCreateAttribute(FieldInfo fieldInfo, out HoudiniGeoAttribute attribute)
+        private static bool GetAttributeTypeAndSize(Type valueType, out HoudiniGeoAttributeType type, out int tupleSize)
         {
-            attribute = null;
-
-            Type type = fieldInfo.FieldType;
+            type = HoudiniGeoAttributeType.Invalid;
+            tupleSize = 0;
             
-            if (type == typeof(bool))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 1};
-            else if (type == typeof(float))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 1};
-            else if (type == typeof(int))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 1};
-            else if (type == typeof(string))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.String, tupleSize = 1};
-            if (type == typeof(Vector2))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 2};
-            else if (type == typeof(Vector3))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 3};
-            else if (type == typeof(Vector4))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 4};
-            else if (type == typeof(Vector2Int))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 2};
-            else if (type == typeof(Vector3Int))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 3};
-            else if (type == typeof(Quaternion))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 4};
-            else if (type == typeof(Color))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 3};
+            if (valueType == typeof(bool))
+            {
+                type = HoudiniGeoAttributeType.Integer;
+                tupleSize = 1;
+            }
+            else if (valueType == typeof(float))
+            {
+                type = HoudiniGeoAttributeType.Float;
+                tupleSize = 1;
+            }
+            else if (valueType == typeof(int))
+            {
+                type = HoudiniGeoAttributeType.Integer;
+                tupleSize = 1;
+            }
+            else if (valueType == typeof(string))
+            {
+                type = HoudiniGeoAttributeType.String;
+                tupleSize = 1;
+            }
+            if (valueType == typeof(Vector2))
+            {
+                type = HoudiniGeoAttributeType.Float;
+                tupleSize = 2;
+            }
+            else if (valueType == typeof(Vector3))
+            {
+                type = HoudiniGeoAttributeType.Float;
+                tupleSize = 3;
+            }
+            else if (valueType == typeof(Vector4))
+            {
+                type = HoudiniGeoAttributeType.Float;
+                tupleSize = 4;
+            }
+            else if (valueType == typeof(Vector2Int))
+            {
+                type = HoudiniGeoAttributeType.Integer;
+                tupleSize = 2;
+            }
+            else if (valueType == typeof(Vector3Int))
+            {
+                type = HoudiniGeoAttributeType.Integer;
+                tupleSize = 3;
+            }
+            else if (valueType == typeof(Quaternion))
+            {
+                type = HoudiniGeoAttributeType.Float;
+                tupleSize = 4;
+            }
+            else if (valueType == typeof(Color))
+            {
+                type = HoudiniGeoAttributeType.Float;
+                tupleSize = 3;
+            }
+
+            return type != HoudiniGeoAttributeType.Invalid;
+        }
+
+        private static bool TryCreateAttribute(
+            this HoudiniGeo houdiniGeo, string name, HoudiniGeoAttributeType type, int tupleSize,
+            HoudiniGeoAttributeOwner owner, out HoudiniGeoAttribute attribute)
+        {
+            attribute = new HoudiniGeoAttribute {type = type, tupleSize = tupleSize};
 
             if (attribute == null)
                 return false;
+
+            attribute.name = name;
+            attribute.owner = owner;
             
-            attribute.name = fieldInfo.Name;
+            houdiniGeo.attributes.Add(attribute);
+
             return true;
+        }
+
+        private static bool TryCreateAttribute(
+            this HoudiniGeo houdiniGeo, FieldInfo fieldInfo, HoudiniGeoAttributeOwner owner,
+            out HoudiniGeoAttribute attribute)
+        {
+            attribute = null;
+
+            Type valueType = fieldInfo.FieldType;
+
+            bool isValid = GetAttributeTypeAndSize(valueType, out HoudiniGeoAttributeType type, out int tupleSize);
+            if (!isValid)
+                return false;
+
+            return TryCreateAttribute(houdiniGeo, fieldInfo.Name, type, tupleSize, owner, out attribute);
+        }
+
+        private static bool TryGetOrCreateAttribute(this HoudiniGeo houdiniGeo,
+            FieldInfo fieldInfo, HoudiniGeoAttributeOwner owner, out HoudiniGeoAttribute attribute)
+        {
+            bool isValid = GetAttributeTypeAndSize(fieldInfo.FieldType, out HoudiniGeoAttributeType type, out int _);
+            if (!isValid)
+            {
+                attribute = null;
+                return false;
+            }
+
+            bool existedAlready = houdiniGeo.TryGetAttribute(fieldInfo.Name, type, owner, out attribute);
+            if (existedAlready)
+                return true;
+
+            return TryCreateAttribute(houdiniGeo, fieldInfo, owner, out attribute);
         }
 
         public static PointCollection<PointType> GetPoints<PointType>(
