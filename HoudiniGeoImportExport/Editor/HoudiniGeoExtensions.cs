@@ -154,7 +154,7 @@ namespace Houdini.GeoImportExport
             var tangents = (tangentAttr != null) ? new Vector4[vertexCount] : null;
 
             // Fill the mesh buffers
-            int[] vertToPoint = geo.pointRefs;
+            int[] vertToPoint = geo.pointRefs.ToArray();
             Dictionary<int, int> vertIndexGlobalToLocal = new Dictionary<int, int>();
             for (int i=0; i<vertexCount; ++i)
             {

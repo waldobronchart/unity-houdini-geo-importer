@@ -136,7 +136,7 @@ namespace Houdini.GeoImportExport
             Dictionary<string, JToken> topologyDict = ArrayKeyValueToDictionary(topologyValueToken.Children().ToArray());
             Dictionary<string, JToken> pointRefDict = ArrayKeyValueToDictionary(topologyDict["pointref"].Children().ToArray());
 
-            geo.pointRefs = pointRefDict["indices"].Values<int>().ToArray();
+            geo.pointRefs = pointRefDict["indices"].Values<int>().ToList();
         }
 
         private static Dictionary<string, HoudiniGeoAttributeOwner> CACHED_ATTRIBUTES_TO_PARSE;

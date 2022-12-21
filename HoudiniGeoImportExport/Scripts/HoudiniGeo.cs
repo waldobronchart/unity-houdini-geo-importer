@@ -204,7 +204,7 @@ namespace Houdini.GeoImportExport
         public int primCount;
         public HoudiniGeoFileInfo fileInfo;
 
-        public int[] pointRefs = new int[0];
+        public List<int> pointRefs = new List<int>();
             
         public List<HoudiniGeoAttribute> attributes = new List<HoudiniGeoAttribute>();
 
@@ -241,7 +241,7 @@ namespace Houdini.GeoImportExport
         public void Clear()
         {
             pointCount = 0;
-            pointRefs = new int[0];
+            pointRefs = new List<int>();
             
             attributes.Clear();
             polyPrimitives = new PolyPrimitive[0];
