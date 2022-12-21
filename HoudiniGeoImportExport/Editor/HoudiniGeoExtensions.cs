@@ -23,12 +23,12 @@ namespace Houdini.GeoImportExport
 {
     public static class HoudiniGeoExtensions
     {
-        private const string PositionAttributeName = "P";
-        private const string NormalAttributeName = "N";
-        private const string UpAttributeName = "up";
-        private const string RotationAttributeName = "orient";
+        public const string PositionAttributeName = "P";
+        public const string NormalAttributeName = "N";
+        public const string UpAttributeName = "up";
+        public const string RotationAttributeName = "orient";
         
-        private const string GroupsFieldName = "groups";
+        public const string GroupsFieldName = "groups";
         
         internal static void ImportAllMeshes(this HoudiniGeo geo)
         {
@@ -598,7 +598,7 @@ namespace Houdini.GeoImportExport
                     
                     HoudiniGeoAttribute attribute = kvp.Value;
 
-                    AddValueAsTuples(attribute, value, translateCoordinateSystems);
+                    attribute.AddValueAsTuples(value, translateCoordinateSystems);
                 }
             }
             
@@ -609,7 +609,7 @@ namespace Houdini.GeoImportExport
 
                 HoudiniGeoAttribute attribute = kvp.Value;
 
-                AddValueAsTuples(attribute, value, translateCoordinateSystems);
+                attribute.AddValueAsTuples(value, translateCoordinateSystems);
             }
 
             // Figure out which groups this point has based on the enum type.
@@ -653,83 +653,6 @@ namespace Houdini.GeoImportExport
                     // Now add it to the geometry.
                     houdiniGeo.pointGroups.Add(group);
                 }
-            }
-        }
-
-        private static void AddValueAsTuples(
-            HoudiniGeoAttribute attribute, object value, bool translateCoordinateSystems)
-        {
-            string name = attribute.name;
-            
-            // If specified, automatically translate the position to Houdini's format.
-            if (translateCoordinateSystems && name == PositionAttributeName)
-            {
-                Vector3 p = Units.ToHoudiniPosition((Vector3)value);
-                value = p;
-            }
-
-            // If specified, automatically translate the direction to Houdini's format.
-            else if (translateCoordinateSystems && (name == NormalAttributeName || name == UpAttributeName))
-            {
-                Vector3 n = Units.ToHoudiniDirection((Vector3)value);
-                value = n;
-            }
-
-            // If specified, automatically translate the rotation to Houdini's format.
-            else if (translateCoordinateSystems && name == RotationAttributeName)
-            {
-                Quaternion orient = Units.ToHoudiniRotation((Quaternion)value);
-                value = orient;
-            }
-
-            switch (value)
-            {
-                case bool b:
-                    attribute.intValues.Add(b ? 1 : 0);
-                    break;
-                case float f:
-                    attribute.floatValues.Add(f);
-                    break;
-                case int i:
-                    attribute.intValues.Add(i);
-                    break;
-                case string s:
-                    attribute.stringValues.Add(s);
-                    break;
-                case Vector2 vector2:
-                    attribute.floatValues.Add(vector2.x);
-                    attribute.floatValues.Add(vector2.y);
-                    break;
-                case Vector3 vector3:
-                    attribute.floatValues.Add(vector3.x);
-                    attribute.floatValues.Add(vector3.y);
-                    attribute.floatValues.Add(vector3.z);
-                    break;
-                case Vector4 vector4:
-                    attribute.floatValues.Add(vector4.x);
-                    attribute.floatValues.Add(vector4.y);
-                    attribute.floatValues.Add(vector4.z);
-                    attribute.floatValues.Add(vector4.w);
-                    break;
-                case Vector2Int vector2Int:
-                    attribute.floatValues.Add(vector2Int.x);
-                    attribute.floatValues.Add(vector2Int.y);
-                    break;
-                case Vector3Int vector3Int:
-                    attribute.floatValues.Add(vector3Int.x);
-                    attribute.floatValues.Add(vector3Int.y);
-                    break;
-                case Quaternion quaternion:
-                    attribute.floatValues.Add(quaternion.x);
-                    attribute.floatValues.Add(quaternion.y);
-                    attribute.floatValues.Add(quaternion.z);
-                    attribute.floatValues.Add(quaternion.w);
-                    break;
-                case Color color:
-                    attribute.floatValues.Add(color.r);
-                    attribute.floatValues.Add(color.g);
-                    attribute.floatValues.Add(color.b);
-                    break;
             }
         }
 
