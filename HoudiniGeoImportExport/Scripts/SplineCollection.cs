@@ -24,6 +24,8 @@ namespace Houdini.GeoImportExport
 
         public void Add(SplineType item) => points.Add(item);
 
+        public void AddRange(IEnumerable<SplineType> collection) => points.AddRange(collection);
+
         public void Clear() => points.Clear();
 
         public bool Contains(SplineType item) => points.Contains(item);
