@@ -335,10 +335,6 @@ namespace Houdini.GeoImportExport
 
             int primIdCounter = 0;
 
-            var polyPrimitives = new List<PolyPrimitive>();
-            var bezierCurvePrimitives = new List<BezierCurvePrimitive>();
-            var nurbCurvePrimitives = new List<NURBCurvePrimitive>();
-
             foreach (var primitiveToken in primitivesValueToken.Children())
             {
                 // Primitive [[Header], [Body]]
@@ -375,21 +371,17 @@ namespace Houdini.GeoImportExport
                     switch (runType)
                     {
                     case "Poly":
-                        polyPrimitives.AddRange(ParsePolyPrimitiveGroup(headerDict, bodyToken, primIdCounter));
+                        geo.polyPrimitives.AddRange(ParsePolyPrimitiveGroup(headerDict, bodyToken, primIdCounter));
                         break;
                     case "BezierCurve":
-                        //bezierCurvePrimitives.AddRange(primitives);
+                        //geo.bezierCurvePrimitives.AddRange(primitives);
                         break;
                     case "NURBCurve":
-                        //nurbCurvePrimitives.AddRange(primitives);
+                        //geo.nurbCurvePrimitives.AddRange(primitives);
                         break;
                     }
                 }
             }
-
-            geo.polyPrimitives = polyPrimitives.ToArray();
-            geo.bezierCurvePrimitives = bezierCurvePrimitives.ToArray();
-            geo.nurbCurvePrimitives = nurbCurvePrimitives.ToArray();
         }
 
         private static PolyPrimitive[] ParsePolyPrimitiveGroup(Dictionary<string, JToken> headerDict, JToken bodyToken, int primIdCounter)

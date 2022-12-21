@@ -39,7 +39,7 @@ namespace Houdini.GeoImportExport
             }
 
             // Convert to unity mesh and store mesh as sub asset
-            if (geo.polyPrimitives.Length > 0)
+            if (geo.polyPrimitives.Count > 0)
             {
                 var mesh = AssetDatabase.LoadAllAssetsAtPath(geoAssetPath).Where(a => a is Mesh).FirstOrDefault() as Mesh;
                 if (mesh == null)
@@ -55,7 +55,7 @@ namespace Houdini.GeoImportExport
 
         public static void ToUnityMesh(this HoudiniGeo geo, Mesh mesh)
         {
-            if (geo.polyPrimitives.Length == 0)
+            if (geo.polyPrimitives.Count == 0)
             {
                 Debug.LogError("Cannot convert HoudiniGeo to Mesh because geo has no PolyPrimitives");
                 return;
