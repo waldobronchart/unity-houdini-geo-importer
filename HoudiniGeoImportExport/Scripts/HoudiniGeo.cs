@@ -63,9 +63,9 @@ namespace Houdini.GeoImportExport
         public HoudiniGeoAttributeOwner owner;
         public int tupleSize;
 
-        public float[] floatValues;
-        public int[] intValues;
-        public string[] stringValues;
+        public List<float> floatValues = new List<float>();
+        public List<int> intValues = new List<int>();
+        public List<string> stringValues = new List<string>();
     }
 
 

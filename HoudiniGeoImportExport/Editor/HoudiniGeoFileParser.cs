@@ -286,11 +286,11 @@ namespace Houdini.GeoImportExport
                 {
                     int tupleSize = valuesDict["size"].Value<int>();
                     string valuesKey = (tupleSize == 1) ? "arrays" : "tuples";
-                    geoAttribute.floatValues = valuesDict[valuesKey].Children().SelectMany(t => t.Values<float>()).ToArray();
+                    geoAttribute.floatValues = valuesDict[valuesKey].Children().SelectMany(t => t.Values<float>()).ToList();
                 }
                 else if (geoAttribute.type == HoudiniGeoAttributeType.Integer)
                 {
-                    geoAttribute.intValues = valuesDict["arrays"].Children().SelectMany(t => t.Values<int>()).ToArray();
+                    geoAttribute.intValues = valuesDict["arrays"].Children().SelectMany(t => t.Values<int>()).ToList();
                 }
             }
             // Parse String types
@@ -302,7 +302,7 @@ namespace Houdini.GeoImportExport
                 string[] stringValues = valuesBlockDict["strings"].Values<string>().ToArray();
                 int[] indices = indicesDict["arrays"].Children().SelectMany(t => t.Values<int>()).ToArray();
 
-                geoAttribute.stringValues = indices.Select(i => (i >= 0 && i < stringValues.Length) ? stringValues[i] : "").ToArray();
+                geoAttribute.stringValues = indices.Select(i => (i >= 0 && i < stringValues.Length) ? stringValues[i] : "").ToList();
             }
             // Unexpected type?
             else

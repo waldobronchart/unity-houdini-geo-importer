@@ -2,7 +2,8 @@
  * Houdini Geo File Importer for Unity
  *
  * Copyright 2015 by Waldo Bronchart <wbronchart@gmail.com>
- * Licensed under GNU General Public License 3.0 or later. 
+ * Exporter added in 2021 by Roy Theunissen <roy.theunissen@live.nl>
+ * Licensed under GNU General Public License 3.0 or later.
  * Some rights reserved. See COPYING, AUTHORS.
  */
 
@@ -412,7 +413,7 @@ namespace Houdini.GeoImportExport
                 return;
             }
 
-            values = attr.floatValues;
+            values = attr.floatValues.ToArray();
         }
         
         private static void GetValues(this HoudiniGeoAttribute attr, out Vector2[] values)
@@ -424,7 +425,7 @@ namespace Houdini.GeoImportExport
             }
             
             // Convert to Vector2
-            float[] rawValues = attr.floatValues;
+            float[] rawValues = attr.floatValues.ToArray();
             values = new Vector2[rawValues.Length / attr.tupleSize];
             for (int i=0; i<values.Length; i++)
             {
@@ -442,7 +443,7 @@ namespace Houdini.GeoImportExport
             }
 
             // Convert to Vector3
-            float[] rawValues = attr.floatValues;
+            float[] rawValues = attr.floatValues.ToArray();
             values = new Vector3[rawValues.Length / attr.tupleSize];
             for (int i=0; i<values.Length; i++)
             {
@@ -461,7 +462,7 @@ namespace Houdini.GeoImportExport
             }
             
             // Convert to Vector4
-            float[] rawValues = attr.floatValues;
+            float[] rawValues = attr.floatValues.ToArray();
             values = new Vector4[rawValues.Length / attr.tupleSize];
             for (int i=0; i<values.Length; i++)
             {
@@ -481,7 +482,7 @@ namespace Houdini.GeoImportExport
             }
             
             // Convert to Color
-            float[] rawValues = attr.floatValues;
+            float[] rawValues = attr.floatValues.ToArray();
             values = new Color[rawValues.Length / attr.tupleSize];
             for (int i=0; i<values.Length; i++)
             {
@@ -504,7 +505,7 @@ namespace Houdini.GeoImportExport
                 return;
             }
             
-            values = attr.intValues;
+            values = attr.intValues.ToArray();
         }
         
         private static void GetValues(this HoudiniGeoAttribute attr, out string[] values)
@@ -515,7 +516,7 @@ namespace Houdini.GeoImportExport
                 return;
             }
             
-            values = attr.stringValues;
+            values = attr.stringValues.ToArray();
         }
         
         private static bool ValidateForGetValues<T>(this HoudiniGeoAttribute attr, HoudiniGeoAttributeType expectedType, 
@@ -543,12 +544,12 @@ namespace Houdini.GeoImportExport
             HoudiniGeoFileExporter.Export(houdiniGeo, path);
         }
 
-        public static void SetPoints<PointType>(
+        public static void AddPoints<PointType>(
             this HoudiniGeo houdiniGeo, PointCollection<PointType> pointCollection,
             bool translateCoordinateSystems = true)
             where PointType : PointData
         {
-            houdiniGeo.pointCount = pointCollection.Count;
+            houdiniGeo.pointCount += pointCollection.Count;
 
             // First create the attributes.
             Dictionary<FieldInfo, HoudiniGeoAttribute> fieldToPointAttribute =
@@ -602,9 +603,9 @@ namespace Houdini.GeoImportExport
                         kvp.Key.Name, value, floatValues, intValues, stringValues, translateCoordinateSystems);
                 }
 
-                kvp.Value.floatValues = floatValues.ToArray();
-                kvp.Value.intValues = intValues.ToArray();
-                kvp.Value.stringValues = stringValues.ToArray();
+                kvp.Value.floatValues.AddRange(floatValues);
+                kvp.Value.intValues.AddRange(intValues);
+                kvp.Value.stringValues.AddRange(stringValues);
             }
             
             // Now populate the detail attributes with values.
@@ -618,9 +619,9 @@ namespace Houdini.GeoImportExport
 
                 AddValueAsTuples(kvp.Key.Name, value, floatValues, intValues, stringValues, translateCoordinateSystems);
 
-                kvp.Value.floatValues = floatValues.ToArray();
-                kvp.Value.intValues = intValues.ToArray();
-                kvp.Value.stringValues = stringValues.ToArray();
+                kvp.Value.floatValues.AddRange(floatValues);
+                kvp.Value.intValues.AddRange(intValues);
+                kvp.Value.stringValues.AddRange(stringValues);
             }
 
             // Then add the point & detail attributes to the geometry.
