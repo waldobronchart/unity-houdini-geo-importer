@@ -656,6 +656,15 @@ namespace Houdini.GeoImportExport
             }
         }
 
+        public static void AddSplines<SplineType, PointType>(
+            this HoudiniGeo houdiniGeo, SplineCollection<SplineType> splineCollection,
+            bool translateCoordinateSystems = true)
+            where SplineType : SplineData<PointType>
+            where PointType : PointData
+        {
+            // TODO: Add the points from every spline, and also add primitives for every spline.
+        }
+
         private static bool GetAttributeTypeAndSize(Type valueType, out HoudiniGeoAttributeType type, out int tupleSize)
         {
             type = HoudiniGeoAttributeType.Invalid;
