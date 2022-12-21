@@ -7,6 +7,7 @@
  * Some rights reserved. See COPYING, AUTHORS.
  */
 
+using System;
 using UnityEngine;
 
 namespace Houdini.GeoImportExport
@@ -88,6 +89,37 @@ namespace Houdini.GeoImportExport
                     attribute.floatValues.Add(color.g);
                     attribute.floatValues.Add(color.b);
                     break;
+            }
+        }
+
+        public static void AddDefaultValue(
+            this HoudiniGeoAttribute attribute, HoudiniGeoAttributeType type, int tupleSize)
+        {
+            for (int i = 0; i < tupleSize; i++)
+            {
+                switch (type)
+                {
+                    case HoudiniGeoAttributeType.Float:
+                        attribute.floatValues.Add(default);
+                        break;
+                    case HoudiniGeoAttributeType.Integer:
+                        attribute.intValues.Add(default);
+                        break;
+                    case HoudiniGeoAttributeType.String:
+                        attribute.stringValues.Add(string.Empty);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(type), type, null);
+                }
+            }
+        }
+        
+        public static void AddDefaultValues(
+            this HoudiniGeoAttribute attribute, int valueCount, HoudiniGeoAttributeType type, int tupleSize)
+        {
+            for (int i = 0; i < valueCount; i++)
+            {
+                attribute.AddDefaultValue(type, tupleSize);
             }
         }
     }

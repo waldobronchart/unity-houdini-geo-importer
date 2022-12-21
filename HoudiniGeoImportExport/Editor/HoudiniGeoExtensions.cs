@@ -733,6 +733,15 @@ namespace Houdini.GeoImportExport
             attribute.owner = owner;
             
             houdiniGeo.attributes.Add(attribute);
+            
+            // If we are adding an attribute of an element type that already has elements present, we need to make sure 
+            // that they have default values.
+            if (owner == HoudiniGeoAttributeOwner.Vertex)
+                attribute.AddDefaultValues(houdiniGeo.vertexCount, type, tupleSize);
+            else if (owner == HoudiniGeoAttributeOwner.Point)
+                attribute.AddDefaultValues(houdiniGeo.pointCount, type, tupleSize);
+            else if (owner == HoudiniGeoAttributeOwner.Primitive)
+                attribute.AddDefaultValues(houdiniGeo.primCount, type, tupleSize);
 
             return true;
         }
