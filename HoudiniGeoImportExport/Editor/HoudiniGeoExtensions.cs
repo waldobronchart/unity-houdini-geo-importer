@@ -549,8 +549,6 @@ namespace Houdini.GeoImportExport
             bool translateCoordinateSystems = true)
             where PointType : PointData
         {
-            houdiniGeo.pointCount += pointCollection.Count;
-
             // First create the attributes.
             Dictionary<FieldInfo, HoudiniGeoAttribute> fieldToPointAttribute =
                 new Dictionary<FieldInfo, HoudiniGeoAttribute>();
@@ -585,41 +583,33 @@ namespace Houdini.GeoImportExport
                 else
                     fieldToPointAttribute.Add(field, attribute);
             }
+            
+            // Now increment the point count. We must do this AFTER the attributes are created because if there are
+            // already points and we create a new attribute, it will neatly populate the value collections with default
+            // values for those pre-existing points. These new points will receive such attribute values down below.
+            houdiniGeo.pointCount += pointCollection.Count;
 
             // Then populate the point attributes with values.
             foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in fieldToPointAttribute)
             {
-                List<float> floatValues = new List<float>();
-                List<int> intValues = new List<int>();
-                List<string> stringValues = new List<string>();
-
                 foreach (PointType point in pointCollection)
                 {
                     object value = kvp.Key.GetValue(point);
+                    
+                    HoudiniGeoAttribute attribute = kvp.Value;
 
-                    AddValueAsTuples(
-                        kvp.Key.Name, value, floatValues, intValues, stringValues, translateCoordinateSystems);
+                    AddValueAsTuples(attribute, value, translateCoordinateSystems);
                 }
-
-                kvp.Value.floatValues.AddRange(floatValues);
-                kvp.Value.intValues.AddRange(intValues);
-                kvp.Value.stringValues.AddRange(stringValues);
             }
             
             // Now populate the detail attributes with values.
             foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in fieldToDetailAttribute)
             {
                 object value = kvp.Key.GetValue(null);
-                
-                List<float> floatValues = new List<float>();
-                List<int> intValues = new List<int>();
-                List<string> stringValues = new List<string>();
 
-                AddValueAsTuples(kvp.Key.Name, value, floatValues, intValues, stringValues, translateCoordinateSystems);
+                HoudiniGeoAttribute attribute = kvp.Value;
 
-                kvp.Value.floatValues.AddRange(floatValues);
-                kvp.Value.intValues.AddRange(intValues);
-                kvp.Value.stringValues.AddRange(stringValues);
+                AddValueAsTuples(attribute, value, translateCoordinateSystems);
             }
 
             // Figure out which groups this point has based on the enum type.
@@ -667,16 +657,17 @@ namespace Houdini.GeoImportExport
         }
 
         private static void AddValueAsTuples(
-            string name, object value, List<float> floatValues, List<int> intValues, List<string> stringValues,
-            bool translateCoordinateSystems)
+            HoudiniGeoAttribute attribute, object value, bool translateCoordinateSystems)
         {
+            string name = attribute.name;
+            
             // If specified, automatically translate the position to Houdini's format.
             if (translateCoordinateSystems && name == PositionAttributeName)
             {
                 Vector3 p = Units.ToHoudiniPosition((Vector3)value);
                 value = p;
             }
-                    
+
             // If specified, automatically translate the direction to Houdini's format.
             else if (translateCoordinateSystems && (name == NormalAttributeName || name == UpAttributeName))
             {
@@ -690,54 +681,54 @@ namespace Houdini.GeoImportExport
                 Quaternion orient = Units.ToHoudiniRotation((Quaternion)value);
                 value = orient;
             }
-            
+
             switch (value)
             {
                 case bool b:
-                    intValues.Add(b ? 1 : 0);
+                    attribute.intValues.Add(b ? 1 : 0);
                     break;
                 case float f:
-                    floatValues.Add(f);
+                    attribute.floatValues.Add(f);
                     break;
                 case int i:
-                    intValues.Add(i);
+                    attribute.intValues.Add(i);
                     break;
                 case string s:
-                    stringValues.Add(s);
+                    attribute.stringValues.Add(s);
                     break;
                 case Vector2 vector2:
-                    floatValues.Add(vector2.x);
-                    floatValues.Add(vector2.y);
+                    attribute.floatValues.Add(vector2.x);
+                    attribute.floatValues.Add(vector2.y);
                     break;
                 case Vector3 vector3:
-                    floatValues.Add(vector3.x);
-                    floatValues.Add(vector3.y);
-                    floatValues.Add(vector3.z);
+                    attribute.floatValues.Add(vector3.x);
+                    attribute.floatValues.Add(vector3.y);
+                    attribute.floatValues.Add(vector3.z);
                     break;
                 case Vector4 vector4:
-                    floatValues.Add(vector4.x);
-                    floatValues.Add(vector4.y);
-                    floatValues.Add(vector4.z);
-                    floatValues.Add(vector4.w);
+                    attribute.floatValues.Add(vector4.x);
+                    attribute.floatValues.Add(vector4.y);
+                    attribute.floatValues.Add(vector4.z);
+                    attribute.floatValues.Add(vector4.w);
                     break;
                 case Vector2Int vector2Int:
-                    floatValues.Add(vector2Int.x);
-                    floatValues.Add(vector2Int.y);
+                    attribute.floatValues.Add(vector2Int.x);
+                    attribute.floatValues.Add(vector2Int.y);
                     break;
                 case Vector3Int vector3Int:
-                    floatValues.Add(vector3Int.x);
-                    floatValues.Add(vector3Int.y);
+                    attribute.floatValues.Add(vector3Int.x);
+                    attribute.floatValues.Add(vector3Int.y);
                     break;
                 case Quaternion quaternion:
-                    floatValues.Add(quaternion.x);
-                    floatValues.Add(quaternion.y);
-                    floatValues.Add(quaternion.z);
-                    floatValues.Add(quaternion.w);
+                    attribute.floatValues.Add(quaternion.x);
+                    attribute.floatValues.Add(quaternion.y);
+                    attribute.floatValues.Add(quaternion.z);
+                    attribute.floatValues.Add(quaternion.w);
                     break;
                 case Color color:
-                    floatValues.Add(color.r);
-                    floatValues.Add(color.g);
-                    floatValues.Add(color.b);
+                    attribute.floatValues.Add(color.r);
+                    attribute.floatValues.Add(color.g);
+                    attribute.floatValues.Add(color.b);
                     break;
             }
         }
