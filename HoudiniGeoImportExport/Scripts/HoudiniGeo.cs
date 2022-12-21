@@ -105,10 +105,10 @@ namespace Houdini.GeoImportExport
     [Serializable]
     public class NURBCurvePrimitive : HoudiniGeoPrimitive
     {
-        public int[] indices;
+        public List<int> indices = new List<int>();
         public int order;
         public bool endInterpolation;
-        public int[] knots;
+        public List<int> knots = new List<int>();
         
         public NURBCurvePrimitive()
         {
