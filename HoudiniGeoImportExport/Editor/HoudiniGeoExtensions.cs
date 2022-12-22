@@ -28,7 +28,7 @@ namespace Houdini.GeoImportExport
         public const string UpAttributeName = "up";
         public const string RotationAttributeName = "orient";
         
-        public const string GroupsFieldName = "groups";
+        public static readonly string[] GroupFieldNames = { "groups", "grouping" };
         
         internal static void ImportAllMeshes(this HoudiniGeo geo)
         {
@@ -564,7 +564,7 @@ namespace Houdini.GeoImportExport
                 if (field.IsPrivate && field.GetCustomAttribute<SerializeField>() == null)
                     continue;
 
-                if (field.Name == GroupsFieldName)
+                if (GroupFieldNames.Contains(field.Name))
                 {
                     groupsField = field;
                     continue;
@@ -638,10 +638,12 @@ namespace Houdini.GeoImportExport
                     houdiniGeo.TryGetOrCreateGroup(groupName, HoudiniGeoGroupType.Points, out PointGroup group);
                     
                     // Populate the group with points.
-                    for (int pointId = 0; pointId < pointCollection.Count; pointId++)
+                    for (int j = 0; j < pointCollection.Count; j++)
                     {
-                        PointType point = pointCollection[pointId];
+                        PointType point = pointCollection[j];
                         int pointGroupFlags = (int)groupsField.GetValue(point);
+
+                        int pointId = houdiniGeo.pointCount - pointCollection.Count + j;
                         
                         // Check that the point has the flag for this group.
                         if ((pointGroupFlags & groupValue) == groupValue)
