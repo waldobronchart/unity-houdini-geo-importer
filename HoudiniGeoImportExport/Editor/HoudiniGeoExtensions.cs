@@ -634,10 +634,8 @@ namespace Houdini.GeoImportExport
                     if (groupValue <= 0)
                         continue;
 
-                    // Create the point group.
-                    List<int> pointIds = new List<int>();
-                    List<int> vertexIds = new List<int>();
-                    PointGroup group = new PointGroup(groupName, pointIds, vertexIds);
+                    // Get or create the point group.
+                    houdiniGeo.TryGetOrCreateGroup(groupName, HoudiniGeoGroupType.Points, out PointGroup group);
                     
                     // Populate the group with points.
                     for (int pointId = 0; pointId < pointCollection.Count; pointId++)
@@ -647,7 +645,7 @@ namespace Houdini.GeoImportExport
                         
                         // Check that the point has the flag for this group.
                         if ((pointGroupFlags & groupValue) == groupValue)
-                            pointIds.Add(pointId);
+                            group.ids.Add(pointId);
                     }
 
                     // Now add it to the geometry.
@@ -838,6 +836,147 @@ namespace Houdini.GeoImportExport
                 return true;
 
             return TryCreateAttribute(houdiniGeo, fieldInfo, owner, out attribute);
+        }
+
+        public static bool TryGetGroup(
+            this HoudiniGeo houdiniGeo,
+            string name, HoudiniGeoGroupType groupType, out HoudiniGeoGroup @group)
+        {
+            switch (groupType)
+            {
+                case HoudiniGeoGroupType.Points:
+                    foreach (PointGroup pointGroup in houdiniGeo.pointGroups)
+                    {
+                        if (pointGroup.name == name)
+                        {
+                            group = pointGroup;
+                            return true;
+                        }
+                    }
+                    break;
+                case HoudiniGeoGroupType.Primitives:
+                    foreach (PrimitiveGroup primitiveGroup in houdiniGeo.primitiveGroups)
+                    {
+                        if (primitiveGroup.name == name)
+                        {
+                            group = primitiveGroup;
+                            return true;
+                        }
+                    }
+                    break;
+                case HoudiniGeoGroupType.Edges:
+                    foreach (EdgeGroup edgeGroup in houdiniGeo.edgeGroups)
+                    {
+                        if (edgeGroup.name == name)
+                        {
+                            group = edgeGroup;
+                            return true;
+                        }
+                    }
+                    break;
+                case HoudiniGeoGroupType.Invalid:
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(groupType), groupType, null);
+            }
+
+            group = null;
+            return false;
+        }
+
+        private static HoudiniGeoGroupType GetGroupType(Type groupType)
+        {
+            if (groupType == typeof(PointGroup))
+                return HoudiniGeoGroupType.Points;
+            if (groupType == typeof(EdgeGroup))
+                return HoudiniGeoGroupType.Edges;
+            if (groupType == typeof(PrimitiveGroup))
+                return HoudiniGeoGroupType.Primitives;
+            return HoudiniGeoGroupType.Invalid;
+        }
+        
+        public static bool TryGetGroup<GroupType>(
+            this HoudiniGeo houdiniGeo, string name, out GroupType group)
+            where GroupType : HoudiniGeoGroup
+        {
+            HoudiniGeoGroupType groupType = GetGroupType(typeof(GroupType));
+            bool result = houdiniGeo.TryGetGroup(name, groupType, out HoudiniGeoGroup groupBase);
+            if (!result)
+            {
+                group = null;
+                return false;
+            }
+
+            group = (GroupType)groupBase;
+            return true;
+        }
+
+        private static bool TryCreateGroup(
+            this HoudiniGeo houdiniGeo, string name, HoudiniGeoGroupType type, out HoudiniGeoGroup group)
+        {
+            switch (type)
+            {
+                case HoudiniGeoGroupType.Points:
+                    PointGroup pointGroup = new PointGroup(name);
+                    group = pointGroup;
+                    houdiniGeo.pointGroups.Add(pointGroup);
+                    return true;
+                case HoudiniGeoGroupType.Primitives:
+                    PrimitiveGroup primitiveGroup = new PrimitiveGroup(name);
+                    group = primitiveGroup;
+                    houdiniGeo.primitiveGroups.Add(primitiveGroup);
+                    return true;
+                case HoudiniGeoGroupType.Edges:
+                    EdgeGroup edgeGroup = new EdgeGroup(name);
+                    group = edgeGroup;
+                    houdiniGeo.edgeGroups.Add(edgeGroup);
+                    return true;
+                case HoudiniGeoGroupType.Invalid:
+                default:
+                    group = null;
+                    return false;
+            }
+        }
+        
+        private static bool TryCreateGroup<GroupType>(
+            this HoudiniGeo houdiniGeo, string name, HoudiniGeoGroupType type, out GroupType group)
+            where GroupType : HoudiniGeoGroup
+        {
+            HoudiniGeoGroupType groupType = GetGroupType(typeof(GroupType));
+            bool result = houdiniGeo.TryCreateGroup(name, groupType, out HoudiniGeoGroup groupBase);
+            if (!result)
+            {
+                group = null;
+                return false;
+            }
+
+            group = (GroupType)groupBase;
+            return true;
+        }
+        
+        public static bool TryGetOrCreateGroup(this HoudiniGeo houdiniGeo,
+            string name, HoudiniGeoGroupType type, out HoudiniGeoGroup group)
+        {
+            bool existedAlready = houdiniGeo.TryGetGroup(name, type, out group);
+            if (existedAlready)
+                return true;
+
+            return TryCreateGroup(houdiniGeo, name, type, out group);
+        }
+        
+        public static bool TryGetOrCreateGroup<GroupType>(this HoudiniGeo houdiniGeo,
+            string name, HoudiniGeoGroupType type, out GroupType group)
+            where GroupType : HoudiniGeoGroup
+        {
+            HoudiniGeoGroupType groupType = GetGroupType(typeof(GroupType));
+            bool result = houdiniGeo.TryGetOrCreateGroup(name, groupType, out HoudiniGeoGroup groupBase);
+            if (!result)
+            {
+                group = null;
+                return false;
+            }
+
+            group = (GroupType)groupBase;
+            return true;
         }
 
         public static PointCollection<PointType> GetPoints<PointType>(
