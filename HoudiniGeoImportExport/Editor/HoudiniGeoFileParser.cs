@@ -136,7 +136,7 @@ namespace Houdini.GeoImportExport
             Dictionary<string, JToken> topologyDict = ArrayKeyValueToDictionary(topologyValueToken.Children().ToArray());
             Dictionary<string, JToken> pointRefDict = ArrayKeyValueToDictionary(topologyDict["pointref"].Children().ToArray());
 
-            geo.pointRefs = pointRefDict["indices"].Values<int>().ToArray();
+            geo.pointRefs = pointRefDict["indices"].Values<int>().ToList();
         }
 
         private static Dictionary<string, HoudiniGeoAttributeOwner> CACHED_ATTRIBUTES_TO_PARSE;
@@ -286,11 +286,11 @@ namespace Houdini.GeoImportExport
                 {
                     int tupleSize = valuesDict["size"].Value<int>();
                     string valuesKey = (tupleSize == 1) ? "arrays" : "tuples";
-                    geoAttribute.floatValues = valuesDict[valuesKey].Children().SelectMany(t => t.Values<float>()).ToArray();
+                    geoAttribute.floatValues = valuesDict[valuesKey].Children().SelectMany(t => t.Values<float>()).ToList();
                 }
                 else if (geoAttribute.type == HoudiniGeoAttributeType.Integer)
                 {
-                    geoAttribute.intValues = valuesDict["arrays"].Children().SelectMany(t => t.Values<int>()).ToArray();
+                    geoAttribute.intValues = valuesDict["arrays"].Children().SelectMany(t => t.Values<int>()).ToList();
                 }
             }
             // Parse String types
@@ -302,7 +302,7 @@ namespace Houdini.GeoImportExport
                 string[] stringValues = valuesBlockDict["strings"].Values<string>().ToArray();
                 int[] indices = indicesDict["arrays"].Children().SelectMany(t => t.Values<int>()).ToArray();
 
-                geoAttribute.stringValues = indices.Select(i => (i >= 0 && i < stringValues.Length) ? stringValues[i] : "").ToArray();
+                geoAttribute.stringValues = indices.Select(i => (i >= 0 && i < stringValues.Length) ? stringValues[i] : "").ToList();
             }
             // Unexpected type?
             else
@@ -334,10 +334,6 @@ namespace Houdini.GeoImportExport
             // ],
 
             int primIdCounter = 0;
-
-            var polyPrimitives = new List<PolyPrimitive>();
-            var bezierCurvePrimitives = new List<BezierCurvePrimitive>();
-            var nurbCurvePrimitives = new List<NURBCurvePrimitive>();
 
             foreach (var primitiveToken in primitivesValueToken.Children())
             {
@@ -375,21 +371,17 @@ namespace Houdini.GeoImportExport
                     switch (runType)
                     {
                     case "Poly":
-                        polyPrimitives.AddRange(ParsePolyPrimitiveGroup(headerDict, bodyToken, primIdCounter));
+                        geo.polyPrimitives.AddRange(ParsePolyPrimitiveGroup(headerDict, bodyToken, primIdCounter));
                         break;
                     case "BezierCurve":
-                        //bezierCurvePrimitives.AddRange(primitives);
+                        //geo.bezierCurvePrimitives.AddRange(primitives);
                         break;
                     case "NURBCurve":
-                        //nurbCurvePrimitives.AddRange(primitives);
+                        //geo.nurbCurvePrimitives.AddRange(primitives);
                         break;
                     }
                 }
             }
-
-            geo.polyPrimitives = polyPrimitives.ToArray();
-            geo.bezierCurvePrimitives = bezierCurvePrimitives.ToArray();
-            geo.nurbCurvePrimitives = nurbCurvePrimitives.ToArray();
         }
 
         private static PolyPrimitive[] ParsePolyPrimitiveGroup(Dictionary<string, JToken> headerDict, JToken bodyToken, int primIdCounter)

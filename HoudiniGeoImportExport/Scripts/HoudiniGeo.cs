@@ -63,9 +63,9 @@ namespace Houdini.GeoImportExport
         public HoudiniGeoAttributeOwner owner;
         public int tupleSize;
 
-        public float[] floatValues;
-        public int[] intValues;
-        public string[] stringValues;
+        public List<float> floatValues = new List<float>();
+        public List<int> intValues = new List<int>();
+        public List<string> stringValues = new List<string>();
     }
 
 
@@ -105,10 +105,10 @@ namespace Houdini.GeoImportExport
     [Serializable]
     public class NURBCurvePrimitive : HoudiniGeoPrimitive
     {
-        public int[] indices;
+        public List<int> indices = new List<int>();
         public int order;
         public bool endInterpolation;
-        public int[] knots;
+        public List<int> knots = new List<int>();
         
         public NURBCurvePrimitive()
         {
@@ -143,33 +143,39 @@ namespace Houdini.GeoImportExport
 
     public class PrimitiveGroup : HoudiniGeoGroup
     {
-        public List<int> ids;
+        public List<int> ids = new List<int>();
 
-        public PrimitiveGroup(string name, List<int> ids) : base(name, HoudiniGeoGroupType.Primitives)
+        public PrimitiveGroup(string name, List<int> ids = null) : base(name, HoudiniGeoGroupType.Primitives)
         {
-            this.ids = ids;
+            if (ids != null)
+                this.ids = ids;
         }
     }
     
     public class PointGroup : HoudiniGeoGroup
     {
-        public List<int> ids;
-        public List<int> vertIds;
+        public List<int> ids = new List<int>();
+        public List<int> vertIds = new List<int>();
 
-        public PointGroup(string name, List<int> ids, List<int> vertIds) : base(name, HoudiniGeoGroupType.Points)
+        public PointGroup(string name, List<int> ids = null, List<int> vertIds = null)
+            : base(name, HoudiniGeoGroupType.Points)
         {
-            this.ids = ids;
-            this.vertIds = vertIds;
+            if (ids != null)
+                this.ids = ids;
+            if (vertIds != null)
+                this.vertIds = vertIds;
         }
     }
     
     public class EdgeGroup : HoudiniGeoGroup
     {
-        public List<KeyValuePair<int, int>> pointPairs;
+        public List<KeyValuePair<int, int>> pointPairs = new List<KeyValuePair<int, int>>();
 
-        public EdgeGroup(string name, List<KeyValuePair<int, int>> pointPairs) : base(name, HoudiniGeoGroupType.Edges)
+        public EdgeGroup(string name, List<KeyValuePair<int, int>> pointPairs = null)
+            : base(name, HoudiniGeoGroupType.Edges)
         {
-            this.pointPairs = pointPairs;
+            if (pointPairs != null)
+                this.pointPairs = pointPairs;
         }
     }
 
@@ -204,13 +210,13 @@ namespace Houdini.GeoImportExport
         public int primCount;
         public HoudiniGeoFileInfo fileInfo;
 
-        public int[] pointRefs = new int[0];
+        public List<int> pointRefs = new List<int>();
             
         public List<HoudiniGeoAttribute> attributes = new List<HoudiniGeoAttribute>();
 
-        public PolyPrimitive[] polyPrimitives = new PolyPrimitive[0];
-        public BezierCurvePrimitive[] bezierCurvePrimitives = new BezierCurvePrimitive[0];
-        public NURBCurvePrimitive[] nurbCurvePrimitives = new NURBCurvePrimitive[0];
+        public List<PolyPrimitive> polyPrimitives = new List<PolyPrimitive>();
+        public List<BezierCurvePrimitive> bezierCurvePrimitives = new List<BezierCurvePrimitive>();
+        public List<NURBCurvePrimitive> nurbCurvePrimitives = new List<NURBCurvePrimitive>();
 
         public List<PrimitiveGroup> primitiveGroups = new List<PrimitiveGroup>();
         public List<PointGroup> pointGroups = new List<PointGroup>();
@@ -241,12 +247,12 @@ namespace Houdini.GeoImportExport
         public void Clear()
         {
             pointCount = 0;
-            pointRefs = new int[0];
+            pointRefs = new List<int>();
             
             attributes.Clear();
-            polyPrimitives = new PolyPrimitive[0];
-            bezierCurvePrimitives = new BezierCurvePrimitive[0];
-            nurbCurvePrimitives = new NURBCurvePrimitive[0];
+            polyPrimitives = new List<PolyPrimitive>();
+            bezierCurvePrimitives = new List<BezierCurvePrimitive>();
+            nurbCurvePrimitives = new List<NURBCurvePrimitive>();
             primitiveGroups.Clear();
             pointGroups.Clear();
             edgeGroups.Clear();

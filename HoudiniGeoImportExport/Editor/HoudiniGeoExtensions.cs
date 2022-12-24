@@ -2,7 +2,8 @@
  * Houdini Geo File Importer for Unity
  *
  * Copyright 2015 by Waldo Bronchart <wbronchart@gmail.com>
- * Licensed under GNU General Public License 3.0 or later. 
+ * Exporter added in 2021 by Roy Theunissen <roy.theunissen@live.nl>
+ * Licensed under GNU General Public License 3.0 or later.
  * Some rights reserved. See COPYING, AUTHORS.
  */
 
@@ -22,12 +23,12 @@ namespace Houdini.GeoImportExport
 {
     public static class HoudiniGeoExtensions
     {
-        private const string PositionAttributeName = "P";
-        private const string NormalAttributeName = "N";
-        private const string UpAttributeName = "up";
-        private const string RotationAttributeName = "orient";
+        public const string PositionAttributeName = "P";
+        public const string NormalAttributeName = "N";
+        public const string UpAttributeName = "up";
+        public const string RotationAttributeName = "orient";
         
-        private const string GroupsFieldName = "groups";
+        public static readonly string[] GroupFieldNames = { "groups", "grouping" };
         
         internal static void ImportAllMeshes(this HoudiniGeo geo)
         {
@@ -38,7 +39,7 @@ namespace Houdini.GeoImportExport
             }
 
             // Convert to unity mesh and store mesh as sub asset
-            if (geo.polyPrimitives.Length > 0)
+            if (geo.polyPrimitives.Count > 0)
             {
                 var mesh = AssetDatabase.LoadAllAssetsAtPath(geoAssetPath).Where(a => a is Mesh).FirstOrDefault() as Mesh;
                 if (mesh == null)
@@ -54,7 +55,7 @@ namespace Houdini.GeoImportExport
 
         public static void ToUnityMesh(this HoudiniGeo geo, Mesh mesh)
         {
-            if (geo.polyPrimitives.Length == 0)
+            if (geo.polyPrimitives.Count == 0)
             {
                 Debug.LogError("Cannot convert HoudiniGeo to Mesh because geo has no PolyPrimitives");
                 return;
@@ -153,7 +154,7 @@ namespace Houdini.GeoImportExport
             var tangents = (tangentAttr != null) ? new Vector4[vertexCount] : null;
 
             // Fill the mesh buffers
-            int[] vertToPoint = geo.pointRefs;
+            int[] vertToPoint = geo.pointRefs.ToArray();
             Dictionary<int, int> vertIndexGlobalToLocal = new Dictionary<int, int>();
             for (int i=0; i<vertexCount; ++i)
             {
@@ -412,7 +413,7 @@ namespace Houdini.GeoImportExport
                 return;
             }
 
-            values = attr.floatValues;
+            values = attr.floatValues.ToArray();
         }
         
         private static void GetValues(this HoudiniGeoAttribute attr, out Vector2[] values)
@@ -424,7 +425,7 @@ namespace Houdini.GeoImportExport
             }
             
             // Convert to Vector2
-            float[] rawValues = attr.floatValues;
+            float[] rawValues = attr.floatValues.ToArray();
             values = new Vector2[rawValues.Length / attr.tupleSize];
             for (int i=0; i<values.Length; i++)
             {
@@ -442,7 +443,7 @@ namespace Houdini.GeoImportExport
             }
 
             // Convert to Vector3
-            float[] rawValues = attr.floatValues;
+            float[] rawValues = attr.floatValues.ToArray();
             values = new Vector3[rawValues.Length / attr.tupleSize];
             for (int i=0; i<values.Length; i++)
             {
@@ -461,7 +462,7 @@ namespace Houdini.GeoImportExport
             }
             
             // Convert to Vector4
-            float[] rawValues = attr.floatValues;
+            float[] rawValues = attr.floatValues.ToArray();
             values = new Vector4[rawValues.Length / attr.tupleSize];
             for (int i=0; i<values.Length; i++)
             {
@@ -481,7 +482,7 @@ namespace Houdini.GeoImportExport
             }
             
             // Convert to Color
-            float[] rawValues = attr.floatValues;
+            float[] rawValues = attr.floatValues.ToArray();
             values = new Color[rawValues.Length / attr.tupleSize];
             for (int i=0; i<values.Length; i++)
             {
@@ -504,7 +505,7 @@ namespace Houdini.GeoImportExport
                 return;
             }
             
-            values = attr.intValues;
+            values = attr.intValues.ToArray();
         }
         
         private static void GetValues(this HoudiniGeoAttribute attr, out string[] values)
@@ -515,7 +516,7 @@ namespace Houdini.GeoImportExport
                 return;
             }
             
-            values = attr.stringValues;
+            values = attr.stringValues.ToArray();
         }
         
         private static bool ValidateForGetValues<T>(this HoudiniGeoAttribute attr, HoudiniGeoAttributeType expectedType, 
@@ -543,13 +544,11 @@ namespace Houdini.GeoImportExport
             HoudiniGeoFileExporter.Export(houdiniGeo, path);
         }
 
-        public static void SetPoints<PointType>(
+        public static void AddPoints<PointType>(
             this HoudiniGeo houdiniGeo, PointCollection<PointType> pointCollection,
             bool translateCoordinateSystems = true)
             where PointType : PointData
         {
-            houdiniGeo.pointCount = pointCollection.Count;
-
             // First create the attributes.
             Dictionary<FieldInfo, HoudiniGeoAttribute> fieldToPointAttribute =
                 new Dictionary<FieldInfo, HoudiniGeoAttribute>();
@@ -565,74 +564,54 @@ namespace Houdini.GeoImportExport
                 if (field.IsPrivate && field.GetCustomAttribute<SerializeField>() == null)
                     continue;
 
-                if (field.Name == GroupsFieldName)
+                if (GroupFieldNames.Contains(field.Name))
                 {
                     groupsField = field;
                     continue;
                 }
 
-                bool wasValidAttributeType = TryCreateAttribute(field, out HoudiniGeoAttribute attribute);
-                if (!wasValidAttributeType)
+                HoudiniGeoAttributeOwner owner =
+                    field.IsStatic ? HoudiniGeoAttributeOwner.Detail : HoudiniGeoAttributeOwner.Point;
+
+                bool hasValidAttribute = TryGetOrCreateAttribute(
+                    houdiniGeo, field, owner, out HoudiniGeoAttribute attribute);
+                if (!hasValidAttribute)
                     continue;
 
                 if (field.IsStatic)
-                {
-                    attribute.owner = HoudiniGeoAttributeOwner.Detail;
                     fieldToDetailAttribute.Add(field, attribute);
-                }
                 else
-                {
-                    attribute.owner = HoudiniGeoAttributeOwner.Point;
                     fieldToPointAttribute.Add(field, attribute);
-                }
             }
+            
+            // Now increment the point count. We must do this AFTER the attributes are created because if there are
+            // already points and we create a new attribute, it will neatly populate the value collections with default
+            // values for those pre-existing points. These new points will receive such attribute values down below.
+            houdiniGeo.pointCount += pointCollection.Count;
 
             // Then populate the point attributes with values.
             foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in fieldToPointAttribute)
             {
-                List<float> floatValues = new List<float>();
-                List<int> intValues = new List<int>();
-                List<string> stringValues = new List<string>();
-
                 foreach (PointType point in pointCollection)
                 {
                     object value = kvp.Key.GetValue(point);
+                    
+                    HoudiniGeoAttribute attribute = kvp.Value;
 
-                    AddValueAsTuples(
-                        kvp.Key.Name, value, floatValues, intValues, stringValues, translateCoordinateSystems);
+                    attribute.AddValueAsTuples(value, translateCoordinateSystems);
                 }
-
-                kvp.Value.floatValues = floatValues.ToArray();
-                kvp.Value.intValues = intValues.ToArray();
-                kvp.Value.stringValues = stringValues.ToArray();
             }
             
             // Now populate the detail attributes with values.
             foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in fieldToDetailAttribute)
             {
                 object value = kvp.Key.GetValue(null);
-                
-                List<float> floatValues = new List<float>();
-                List<int> intValues = new List<int>();
-                List<string> stringValues = new List<string>();
 
-                AddValueAsTuples(kvp.Key.Name, value, floatValues, intValues, stringValues, translateCoordinateSystems);
+                HoudiniGeoAttribute attribute = kvp.Value;
 
-                kvp.Value.floatValues = floatValues.ToArray();
-                kvp.Value.intValues = intValues.ToArray();
-                kvp.Value.stringValues = stringValues.ToArray();
+                attribute.AddValueAsTuples(value, translateCoordinateSystems);
             }
 
-            // Then add the point & detail attributes to the geometry.
-            foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in fieldToPointAttribute)
-            {
-                houdiniGeo.attributes.Add(kvp.Value);
-            }
-            foreach (KeyValuePair<FieldInfo, HoudiniGeoAttribute> kvp in fieldToDetailAttribute)
-            {
-                houdiniGeo.attributes.Add(kvp.Value);
-            }
-            
             // Figure out which groups this point has based on the enum type.
             if (groupsField != null)
             {
@@ -655,20 +634,20 @@ namespace Houdini.GeoImportExport
                     if (groupValue <= 0)
                         continue;
 
-                    // Create the point group.
-                    List<int> pointIds = new List<int>();
-                    List<int> vertexIds = new List<int>();
-                    PointGroup group = new PointGroup(groupName, pointIds, vertexIds);
+                    // Get or create the point group.
+                    houdiniGeo.TryGetOrCreateGroup(groupName, HoudiniGeoGroupType.Points, out PointGroup group);
                     
                     // Populate the group with points.
-                    for (int pointId = 0; pointId < pointCollection.Count; pointId++)
+                    for (int j = 0; j < pointCollection.Count; j++)
                     {
-                        PointType point = pointCollection[pointId];
+                        PointType point = pointCollection[j];
                         int pointGroupFlags = (int)groupsField.GetValue(point);
+
+                        int pointId = houdiniGeo.pointCount - pointCollection.Count + j;
                         
                         // Check that the point has the flag for this group.
                         if ((pointGroupFlags & groupValue) == groupValue)
-                            pointIds.Add(pointId);
+                            group.ids.Add(pointId);
                     }
 
                     // Now add it to the geometry.
@@ -677,115 +656,328 @@ namespace Houdini.GeoImportExport
             }
         }
 
-        private static void AddValueAsTuples(
-            string name, object value, List<float> floatValues, List<int> intValues, List<string> stringValues,
-            bool translateCoordinateSystems)
+        public static void AddSplines<SplineType, PointType>(
+            this HoudiniGeo houdiniGeo, SplineCollection<SplineType> splineCollection,
+            bool translateCoordinateSystems = true)
+            where SplineType : SplineData<PointType>
+            where PointType : PointData
         {
-            // If specified, automatically translate the position to Houdini's format.
-            if (translateCoordinateSystems && name == PositionAttributeName)
+            foreach (SplineType spline in splineCollection)
             {
-                Vector3 p = Units.ToHoudiniPosition((Vector3)value);
-                value = p;
-            }
-                    
-            // If specified, automatically translate the direction to Houdini's format.
-            else if (translateCoordinateSystems && (name == NormalAttributeName || name == UpAttributeName))
-            {
-                Vector3 n = Units.ToHoudiniDirection((Vector3)value);
-                value = n;
-            }
+                // Firstly we can just add all of the points. There is nothing special about these points, it's like
+                // any ordinary point collection.
+                houdiniGeo.AddPoints(spline.points, translateCoordinateSystems);
 
-            // If specified, automatically translate the rotation to Houdini's format.
-            else if (translateCoordinateSystems && name == RotationAttributeName)
-            {
-                Quaternion orient = Units.ToHoudiniRotation((Quaternion)value);
-                value = orient;
-            }
-            
-            switch (value)
-            {
-                case bool b:
-                    intValues.Add(b ? 1 : 0);
-                    break;
-                case float f:
-                    floatValues.Add(f);
-                    break;
-                case int i:
-                    intValues.Add(i);
-                    break;
-                case string s:
-                    stringValues.Add(s);
-                    break;
-                case Vector2 vector2:
-                    floatValues.Add(vector2.x);
-                    floatValues.Add(vector2.y);
-                    break;
-                case Vector3 vector3:
-                    floatValues.Add(vector3.x);
-                    floatValues.Add(vector3.y);
-                    floatValues.Add(vector3.z);
-                    break;
-                case Vector4 vector4:
-                    floatValues.Add(vector4.x);
-                    floatValues.Add(vector4.y);
-                    floatValues.Add(vector4.z);
-                    floatValues.Add(vector4.w);
-                    break;
-                case Vector2Int vector2Int:
-                    floatValues.Add(vector2Int.x);
-                    floatValues.Add(vector2Int.y);
-                    break;
-                case Vector3Int vector3Int:
-                    floatValues.Add(vector3Int.x);
-                    floatValues.Add(vector3Int.y);
-                    break;
-                case Quaternion quaternion:
-                    floatValues.Add(quaternion.x);
-                    floatValues.Add(quaternion.y);
-                    floatValues.Add(quaternion.z);
-                    floatValues.Add(quaternion.w);
-                    break;
-                case Color color:
-                    floatValues.Add(color.r);
-                    floatValues.Add(color.g);
-                    floatValues.Add(color.b);
-                    break;
+                // Primitives are comprised of vertices, not points. So we need to add a vertex for every point.
+                // Why do we do this in reverse? The splines I exported from Maya do it in reverse, so I'm doing it too
+                // for consistency. You'll get the spline served to you the way it would be if it came from Maya instead.
+                for (int i = spline.points.Count - 1; i >= 0; i--)
+                {
+                    // Knowing that we just added points, we can grab them from the end of the list.
+                    int pointIndex = houdiniGeo.pointCount - spline.points.Count + i;
+                    houdiniGeo.pointRefs.Add(pointIndex);
+                    houdiniGeo.vertexCount++;
+                }
+                
+                NURBCurvePrimitive nurbCurvePrimitive = new NURBCurvePrimitive();
+                for (int i = 0; i < spline.points.Count; i++)
+                {
+                    // Knowing that we just added a certain number of vertices, we can calculate which ones they were.
+                    int vertexIndex = houdiniGeo.vertexCount - spline.points.Count + i;
+                    nurbCurvePrimitive.indices.Add(vertexIndex);
+                }
+
+                // NOTE: This does not support EVERY kind of spline that GEO files can handle, but it supports
+                // bezier curves which is the kind that's most useful to export from Unity.
+                nurbCurvePrimitive.order = 4;
+                nurbCurvePrimitive.endInterpolation = true;
+                
+                // I'm not so well-versed in NURBS so I'm winging it a little bit here based on a wikipedia article
+                // and some reference splines that I cooked up in Maya. If I made a mistake feel free to fix it.
+                // Here's my sources:
+                // https://en.wikipedia.org/wiki/Non-uniform_rational_B-spline#:~:text=The%20knot%20vector%20is%20a,control%20points%20plus%20curve%20order).
+                // Also go watch this, it's really good: https://www.youtube.com/watch?v=jvPPXbo87ds
+                int vertexCount = spline.points.Count;
+                int knotCount = 2 + (vertexCount - nurbCurvePrimitive.order) / (nurbCurvePrimitive.order - 1);
+                for (int i = 0; i < knotCount; i++)
+                {
+                    int multiplicity;
+                    if (i == 0 || i == knotCount - 1)
+                        multiplicity = nurbCurvePrimitive.order;
+                    else
+                        multiplicity = nurbCurvePrimitive.order - 1;
+                    
+                    for (int j = 0; j < multiplicity; j++)
+                    {
+                        nurbCurvePrimitive.knots.Add(i);
+                    }
+                }
+                
+                houdiniGeo.nurbCurvePrimitives.Add(nurbCurvePrimitive);
+                houdiniGeo.primCount++;
             }
         }
 
-        private static bool TryCreateAttribute(FieldInfo fieldInfo, out HoudiniGeoAttribute attribute)
+        private static bool GetAttributeTypeAndSize(Type valueType, out HoudiniGeoAttributeType type, out int tupleSize)
         {
-            attribute = null;
-
-            Type type = fieldInfo.FieldType;
+            type = HoudiniGeoAttributeType.Invalid;
+            tupleSize = 0;
             
-            if (type == typeof(bool))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 1};
-            else if (type == typeof(float))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 1};
-            else if (type == typeof(int))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 1};
-            else if (type == typeof(string))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.String, tupleSize = 1};
-            if (type == typeof(Vector2))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 2};
-            else if (type == typeof(Vector3))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 3};
-            else if (type == typeof(Vector4))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 4};
-            else if (type == typeof(Vector2Int))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 2};
-            else if (type == typeof(Vector3Int))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Integer, tupleSize = 3};
-            else if (type == typeof(Quaternion))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 4};
-            else if (type == typeof(Color))
-                attribute = new HoudiniGeoAttribute {type = HoudiniGeoAttributeType.Float, tupleSize = 3};
+            if (valueType == typeof(bool))
+            {
+                type = HoudiniGeoAttributeType.Integer;
+                tupleSize = 1;
+            }
+            else if (valueType == typeof(float))
+            {
+                type = HoudiniGeoAttributeType.Float;
+                tupleSize = 1;
+            }
+            else if (valueType == typeof(int))
+            {
+                type = HoudiniGeoAttributeType.Integer;
+                tupleSize = 1;
+            }
+            else if (valueType == typeof(string))
+            {
+                type = HoudiniGeoAttributeType.String;
+                tupleSize = 1;
+            }
+            if (valueType == typeof(Vector2))
+            {
+                type = HoudiniGeoAttributeType.Float;
+                tupleSize = 2;
+            }
+            else if (valueType == typeof(Vector3))
+            {
+                type = HoudiniGeoAttributeType.Float;
+                tupleSize = 3;
+            }
+            else if (valueType == typeof(Vector4))
+            {
+                type = HoudiniGeoAttributeType.Float;
+                tupleSize = 4;
+            }
+            else if (valueType == typeof(Vector2Int))
+            {
+                type = HoudiniGeoAttributeType.Integer;
+                tupleSize = 2;
+            }
+            else if (valueType == typeof(Vector3Int))
+            {
+                type = HoudiniGeoAttributeType.Integer;
+                tupleSize = 3;
+            }
+            else if (valueType == typeof(Quaternion))
+            {
+                type = HoudiniGeoAttributeType.Float;
+                tupleSize = 4;
+            }
+            else if (valueType == typeof(Color))
+            {
+                type = HoudiniGeoAttributeType.Float;
+                tupleSize = 3;
+            }
+
+            return type != HoudiniGeoAttributeType.Invalid;
+        }
+
+        private static bool TryCreateAttribute(
+            this HoudiniGeo houdiniGeo, string name, HoudiniGeoAttributeType type, int tupleSize,
+            HoudiniGeoAttributeOwner owner, out HoudiniGeoAttribute attribute)
+        {
+            attribute = new HoudiniGeoAttribute {type = type, tupleSize = tupleSize};
 
             if (attribute == null)
                 return false;
+
+            attribute.name = name;
+            attribute.owner = owner;
             
-            attribute.name = fieldInfo.Name;
+            houdiniGeo.attributes.Add(attribute);
+            
+            // If we are adding an attribute of an element type that already has elements present, we need to make sure 
+            // that they have default values.
+            if (owner == HoudiniGeoAttributeOwner.Vertex)
+                attribute.AddDefaultValues(houdiniGeo.vertexCount, type, tupleSize);
+            else if (owner == HoudiniGeoAttributeOwner.Point)
+                attribute.AddDefaultValues(houdiniGeo.pointCount, type, tupleSize);
+            else if (owner == HoudiniGeoAttributeOwner.Primitive)
+                attribute.AddDefaultValues(houdiniGeo.primCount, type, tupleSize);
+
+            return true;
+        }
+
+        private static bool TryCreateAttribute(
+            this HoudiniGeo houdiniGeo, FieldInfo fieldInfo, HoudiniGeoAttributeOwner owner,
+            out HoudiniGeoAttribute attribute)
+        {
+            attribute = null;
+
+            Type valueType = fieldInfo.FieldType;
+
+            bool isValid = GetAttributeTypeAndSize(valueType, out HoudiniGeoAttributeType type, out int tupleSize);
+            if (!isValid)
+                return false;
+
+            return TryCreateAttribute(houdiniGeo, fieldInfo.Name, type, tupleSize, owner, out attribute);
+        }
+
+        private static bool TryGetOrCreateAttribute(this HoudiniGeo houdiniGeo,
+            FieldInfo fieldInfo, HoudiniGeoAttributeOwner owner, out HoudiniGeoAttribute attribute)
+        {
+            bool isValid = GetAttributeTypeAndSize(fieldInfo.FieldType, out HoudiniGeoAttributeType type, out int _);
+            if (!isValid)
+            {
+                attribute = null;
+                return false;
+            }
+
+            bool existedAlready = houdiniGeo.TryGetAttribute(fieldInfo.Name, type, owner, out attribute);
+            if (existedAlready)
+                return true;
+
+            return TryCreateAttribute(houdiniGeo, fieldInfo, owner, out attribute);
+        }
+
+        public static bool TryGetGroup(
+            this HoudiniGeo houdiniGeo,
+            string name, HoudiniGeoGroupType groupType, out HoudiniGeoGroup @group)
+        {
+            switch (groupType)
+            {
+                case HoudiniGeoGroupType.Points:
+                    foreach (PointGroup pointGroup in houdiniGeo.pointGroups)
+                    {
+                        if (pointGroup.name == name)
+                        {
+                            group = pointGroup;
+                            return true;
+                        }
+                    }
+                    break;
+                case HoudiniGeoGroupType.Primitives:
+                    foreach (PrimitiveGroup primitiveGroup in houdiniGeo.primitiveGroups)
+                    {
+                        if (primitiveGroup.name == name)
+                        {
+                            group = primitiveGroup;
+                            return true;
+                        }
+                    }
+                    break;
+                case HoudiniGeoGroupType.Edges:
+                    foreach (EdgeGroup edgeGroup in houdiniGeo.edgeGroups)
+                    {
+                        if (edgeGroup.name == name)
+                        {
+                            group = edgeGroup;
+                            return true;
+                        }
+                    }
+                    break;
+                case HoudiniGeoGroupType.Invalid:
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(groupType), groupType, null);
+            }
+
+            group = null;
+            return false;
+        }
+
+        private static HoudiniGeoGroupType GetGroupType(Type groupType)
+        {
+            if (groupType == typeof(PointGroup))
+                return HoudiniGeoGroupType.Points;
+            if (groupType == typeof(EdgeGroup))
+                return HoudiniGeoGroupType.Edges;
+            if (groupType == typeof(PrimitiveGroup))
+                return HoudiniGeoGroupType.Primitives;
+            return HoudiniGeoGroupType.Invalid;
+        }
+        
+        public static bool TryGetGroup<GroupType>(
+            this HoudiniGeo houdiniGeo, string name, out GroupType group)
+            where GroupType : HoudiniGeoGroup
+        {
+            HoudiniGeoGroupType groupType = GetGroupType(typeof(GroupType));
+            bool result = houdiniGeo.TryGetGroup(name, groupType, out HoudiniGeoGroup groupBase);
+            if (!result)
+            {
+                group = null;
+                return false;
+            }
+
+            group = (GroupType)groupBase;
+            return true;
+        }
+
+        private static bool TryCreateGroup(
+            this HoudiniGeo houdiniGeo, string name, HoudiniGeoGroupType type, out HoudiniGeoGroup group)
+        {
+            switch (type)
+            {
+                case HoudiniGeoGroupType.Points:
+                    PointGroup pointGroup = new PointGroup(name);
+                    group = pointGroup;
+                    houdiniGeo.pointGroups.Add(pointGroup);
+                    return true;
+                case HoudiniGeoGroupType.Primitives:
+                    PrimitiveGroup primitiveGroup = new PrimitiveGroup(name);
+                    group = primitiveGroup;
+                    houdiniGeo.primitiveGroups.Add(primitiveGroup);
+                    return true;
+                case HoudiniGeoGroupType.Edges:
+                    EdgeGroup edgeGroup = new EdgeGroup(name);
+                    group = edgeGroup;
+                    houdiniGeo.edgeGroups.Add(edgeGroup);
+                    return true;
+                case HoudiniGeoGroupType.Invalid:
+                default:
+                    group = null;
+                    return false;
+            }
+        }
+        
+        private static bool TryCreateGroup<GroupType>(
+            this HoudiniGeo houdiniGeo, string name, HoudiniGeoGroupType type, out GroupType group)
+            where GroupType : HoudiniGeoGroup
+        {
+            HoudiniGeoGroupType groupType = GetGroupType(typeof(GroupType));
+            bool result = houdiniGeo.TryCreateGroup(name, groupType, out HoudiniGeoGroup groupBase);
+            if (!result)
+            {
+                group = null;
+                return false;
+            }
+
+            group = (GroupType)groupBase;
+            return true;
+        }
+        
+        public static bool TryGetOrCreateGroup(this HoudiniGeo houdiniGeo,
+            string name, HoudiniGeoGroupType type, out HoudiniGeoGroup group)
+        {
+            bool existedAlready = houdiniGeo.TryGetGroup(name, type, out group);
+            if (existedAlready)
+                return true;
+
+            return TryCreateGroup(houdiniGeo, name, type, out group);
+        }
+        
+        public static bool TryGetOrCreateGroup<GroupType>(this HoudiniGeo houdiniGeo,
+            string name, HoudiniGeoGroupType type, out GroupType group)
+            where GroupType : HoudiniGeoGroup
+        {
+            HoudiniGeoGroupType groupType = GetGroupType(typeof(GroupType));
+            bool result = houdiniGeo.TryGetOrCreateGroup(name, groupType, out HoudiniGeoGroup groupBase);
+            if (!result)
+            {
+                group = null;
+                return false;
+            }
+
+            group = (GroupType)groupBase;
             return true;
         }
 

@@ -13,6 +13,7 @@ using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
 using UnityEditor;
+using UnityEngine;
 
 namespace Houdini.GeoImportExport
 {
@@ -56,9 +57,27 @@ namespace Houdini.GeoImportExport
         public static void Export(HoudiniGeo data, string path = null)
         {
             if (string.IsNullOrEmpty(path))
-                HoudiniGeoFileExporter.path = data.exportPath;
-            else
-                HoudiniGeoFileExporter.path = path;
+                path = data.exportPath;
+            
+            // Check if the filename is valid.
+            if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(Path.GetFileName(path)))
+            {
+                Debug.LogWarning(
+                    $"Tried to export GEO file to invalid path: '{path}'");
+                return;
+            }
+
+            // If a relative path is specified, make it an absolute path in the Assets folder.
+            if (string.IsNullOrEmpty(Path.GetDirectoryName(path)) || !Path.IsPathRooted(path))
+                path = Path.Combine(Application.dataPath, path);
+
+            // Make sure it ends with the Houdini extension.
+            path = Path.ChangeExtension(path, HoudiniGeo.EXTENSION);
+
+            // Clean up the path a little.
+            path = path.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            HoudiniGeoFileExporter.path = path;
             
             stringWriter = new StringWriter();
             stringWriter = new StringWriter();
@@ -198,11 +217,11 @@ namespace Houdini.GeoImportExport
                     if (attribute.type == HoudiniGeoAttributeType.Float)
                     {
                         string valuesKey = attribute.tupleSize == 1 ? "arrays" : "tuples";
-                        valuesDictionary.Add(valuesKey, BreakIntoTuples(attribute.floatValues, attribute.tupleSize));
+                        valuesDictionary.Add(valuesKey, BreakIntoTuples(attribute.floatValues.ToArray(), attribute.tupleSize));
                     }
                     else if (attribute.type == HoudiniGeoAttributeType.Integer)
                     {
-                        valuesDictionary.Add("arrays", BreakIntoTuples(attribute.intValues, attribute.tupleSize));
+                        valuesDictionary.Add("arrays", BreakIntoTuples(attribute.intValues.ToArray(), attribute.tupleSize));
                     }
 
                     break;
@@ -213,7 +232,7 @@ namespace Houdini.GeoImportExport
                     body.Add("storage", storageType);
 
                     BreakIntoUniqueStringsAndIndices(
-                        attribute.stringValues, out string[] uniqueStrings, out int[] indices);
+                        attribute.stringValues.ToArray(), out string[] uniqueStrings, out int[] indices);
                     body.Add("strings", uniqueStrings);
 
                     Dictionary<string, object> indicesDictionary = new Dictionary<string, object>();
@@ -366,8 +385,35 @@ namespace Houdini.GeoImportExport
         
         private static void AddPrimitivesToDictionary(Dictionary<string, object> dictionary)
         {
-            // TODO: Add primitives support. I'll be honest: I'm really only interested in point data myself.
-            dictionary.Add("primitives", new object[] {});
+            List<object> primitivesList = new List<object>();
+            dictionary.Add("primitives", primitivesList);
+            
+            foreach (NURBCurvePrimitive nurbCurvePrimitive in data.nurbCurvePrimitives)
+            {
+                // Each attribute has a list with two dictionaries: a header and a body.
+                List<object> primitiveDictionaries = new List<object>();
+                
+                // First a header that just specifies the type of curve.
+                Dictionary<string, object> headerDictionary = new Dictionary<string, object>();
+                headerDictionary.Add("type", nurbCurvePrimitive.type);
+            
+                // Now a body that specifies the properties of the curve.
+                Dictionary<string, object> bodyDictionary = new Dictionary<string, object>();
+                bodyDictionary.Add("vertex", nurbCurvePrimitive.indices);
+                bodyDictionary.Add("closed", false);
+            
+                Dictionary<string, object> basisDictionary = new Dictionary<string, object>();
+                bodyDictionary.Add("basis", basisDictionary);
+                basisDictionary.Add("type", "NURBS");
+                basisDictionary.Add("order", nurbCurvePrimitive.order);
+                basisDictionary.Add("endinterpolation", nurbCurvePrimitive.endInterpolation);
+                basisDictionary.Add("knots", nurbCurvePrimitive.knots);
+            
+                primitiveDictionaries.Add(headerDictionary);
+                primitiveDictionaries.Add(bodyDictionary);
+                
+                primitivesList.Add(primitiveDictionaries);
+            }
         }
 
         private static void SaveDataToFile()

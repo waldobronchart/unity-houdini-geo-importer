@@ -24,6 +24,8 @@ namespace Houdini.GeoImportExport
 
         public void Add(PointType item) => points.Add(item);
 
+        public void AddRange(IEnumerable<PointType> collection) => points.AddRange(collection);
+
         public void Clear() => points.Clear();
 
         public bool Contains(PointType item) => points.Contains(item);
