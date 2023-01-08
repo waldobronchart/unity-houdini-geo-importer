@@ -9,6 +9,7 @@
 
 using System.Collections.Generic;
 using System.IO;
+using RoyTheunissen.UnityHoudiniGEOImportExport;
 using UnityEditor;
 using UnityEngine;
 
@@ -62,6 +63,14 @@ namespace Houdini.GeoImportExport
             instance.transform.localPosition = point.P;
             instance.transform.localRotation = point.orient;
             instance.transform.localScale = point.scale * point.pscale;
+
+            // If there are any components that would like to receive a callback when they are populated by metadata,
+            // find those components and give them the callback now.
+            IOnPopulatedByMetaData[] callbacks = instance.GetComponentsInChildren<IOnPopulatedByMetaData>();
+            for (int i = 0; i < callbacks.Length; i++)
+            {
+                callbacks[i].OnPopulatedByMetaData(point);
+            }
         }
 
         private static GameObject GetPrefabFromName(string name)
